@@ -1,0 +1,8 @@
+{
+  "loadError": "Erreur lors du chargement des données",
+  "noData": "Aucun classement de ligue disponible",
+  "title": "Classement des ligues",
+  "leagueTitle": "Ligue {{league}}",
+  "eloRange": "{{minElo}}-{{maxElo}} Elo",
+  "leagueLogoAlt": "Logo de la ligue {{league}}"
+}

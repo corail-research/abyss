@@ -1,0 +1,8 @@
+{
+  "title": "Agents",
+  "eloLabel": "ELO : {{elo}}",
+  "winsLong": "Victoires : {{count}}",
+  "lossesLong": "Défaites : {{count}}",
+  "winsShort": "V:{{count}}",
+  "lossesShort": "D:{{count}}"
+}

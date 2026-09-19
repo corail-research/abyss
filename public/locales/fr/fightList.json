@@ -1,0 +1,17 @@
+{
+  "downloadError": "Erreur lors du téléchargement du fichier",
+  "filterByAgents": "Filtrer par agents",
+  "allAgents": "Tous les agents",
+  "myAgents": "Mes agents",
+  "filterByResult": "Filtrer par résultat",
+  "badgeAll": "Tous",
+  "badgeWins": "Victoires",
+  "badgeLosses": "Défaites",
+  "resultGroupTitle": "Résultat",
+  "optionAll": "Tous",
+  "optionWins": "Victoires",
+  "optionLosses": "Défaites",
+  "loadError": "Erreur lors du chargement des combats.",
+  "noFightsFound": "Aucun combat trouvé avec les filtres actuels.",
+  "downloadAllJson": "Télécharger tous les JSON"
+}

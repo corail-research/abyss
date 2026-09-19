@@ -1,0 +1,8 @@
+{
+  "title": "Confirmer la suppression",
+  "body": "Êtes-vous sûr de vouloir supprimer {{name}} ?",
+  "thisAgent": "cet agent",
+  "cancelButton": "Annuler",
+  "deleteButton": "Supprimer",
+  "loadingText": "Suppression..."
+}

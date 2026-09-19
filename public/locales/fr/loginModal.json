@@ -1,0 +1,11 @@
+{
+  "triggerButton": "Connexion",
+  "modalTitle": "Connexion",
+  "studentIdLabel": "Matricule étudiant",
+  "studentIdPlaceholder": "Matricule (xxxxxxx)",
+  "passwordLabel": "Mot de passe",
+  "passwordPlaceholder": "Mot de passe",
+  "closeButton": "Fermer",
+  "submitButton": "Entrer",
+  "loadingText": "Connexion..."
+}

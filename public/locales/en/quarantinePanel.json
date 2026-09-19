@@ -1,0 +1,26 @@
+{
+  "loadError": "Error loading quarantined agents",
+  "colId": "ID",
+  "colName": "Name",
+  "colGroup": "Group",
+  "colStatus": "Status",
+  "colRefusalMessage": "Refusal message",
+  "colMessageShort": "Message",
+  "colActions": "Actions",
+  "pagePlaceholder": "Page #",
+  "goButton": "Go",
+  "updated": "Agent updated.",
+  "updateError": "Error while updating.",
+  "deleted": "Agent deleted.",
+  "deleteError": "Error while deleting.",
+  "selectGroupWarning": "Please select a group.",
+  "invalidPage": "Invalid page number.",
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "deleted": "Deleted",
+    "invalid": "Invalid",
+    "quarantine": "Quarantine"
+  }
+}

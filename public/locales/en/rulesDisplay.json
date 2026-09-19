@@ -1,0 +1,7 @@
+{
+  "noGameConfigured": "No game is configured",
+  "gameRulesTitle": "Rules of {{gameName}}",
+  "pageAltText": "Page {{pageNumber}} of rules",
+  "sourceLabel": "Source:",
+  "downloadButton": "Download rules file"
+}

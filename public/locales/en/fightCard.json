@@ -1,0 +1,11 @@
+{
+  "na": "N/A",
+  "unknownPlayer": "Unknown",
+  "invalidDate": "Invalid date",
+  "scheduledIn": "Scheduled in",
+  "statElo": "Elo",
+  "statWins": "Wins",
+  "statLosses": "Losses",
+  "statPointsScored": "Points scored",
+  "statPointsConceded": "Points conceded"
+}

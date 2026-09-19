@@ -1,0 +1,16 @@
+{
+  "sectionTitle": "Configuration des Matchs",
+  "parallelLabel": "Matchs simultanés",
+  "updateButton": "Mettre à jour",
+  "updating": "Mise à jour...",
+  "startButton": "Démarrer les matchs",
+  "stopButton": "Arrêter les matchs",
+  "starting": "Démarrage...",
+  "stopping": "Arrêt...",
+  "parallelUpdateSuccess": "Nombre de matchs simultanés mis à jour",
+  "parallelUpdateError": "Erreur lors de la mise à jour",
+  "matchesStarted": "Matchs démarrés",
+  "matchesStopped": "Matchs arrêtés",
+  "toggleError": "Erreur lors du changement d'état",
+  "loadError": "Erreur lors du chargement de l'arène"
+}

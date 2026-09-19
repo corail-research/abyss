@@ -1,0 +1,12 @@
+{
+  "logoutSuccess": "You have been logged out!",
+  "greeting": "Hello, {{username}}!",
+  "profileButton": "Profile",
+  "adminButton": "Admin",
+  "logoutButton": "Logout",
+  "loginButton": "Login",
+  "navLeaderboard": "Leaderboard",
+  "navFights": "Fights",
+  "navPalmares": "Honors and Awards",
+  "navRules": "Rules of {{gameName}}"
+}

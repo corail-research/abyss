@@ -1,0 +1,4 @@
+{
+  "groupNameWithElo": "{{name}} ({{elo}} Elo)",
+  "victoriesDefeats": "{{wins}} Victoires / {{losses}} Défaites"
+}

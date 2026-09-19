@@ -1,0 +1,18 @@
+{
+  "loadError": "Erreur lors du chargement des groupes",
+  "createTitle": "Créer un nouveau groupe",
+  "labelGroupName": "Nom du groupe",
+  "placeholderName": "Nom",
+  "createButton": "Créer",
+  "creating": "Création...",
+  "colId": "Identifiant",
+  "colName": "Nom",
+  "colLeague": "Ligue",
+  "colActions": "Actions",
+  "created": "Groupe créé.",
+  "createError": "Erreur lors de la création.",
+  "updated": "Groupe mis à jour.",
+  "updateError": "Erreur lors de la mise à jour.",
+  "deleted": "Groupe supprimé.",
+  "deleteError": "Erreur lors de la suppression."
+}

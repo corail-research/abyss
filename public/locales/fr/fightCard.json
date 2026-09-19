@@ -1,0 +1,11 @@
+{
+  "na": "N/D",
+  "unknownPlayer": "Inconnu",
+  "invalidDate": "Date invalide",
+  "scheduledIn": "Prévu dans",
+  "statElo": "ELO",
+  "statWins": "Victoires",
+  "statLosses": "Défaites",
+  "statPointsScored": "Points marqués",
+  "statPointsConceded": "Points concédés"
+}

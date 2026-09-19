@@ -1,0 +1,18 @@
+{
+  "uploadButton": "Upload your agent",
+  "modalTitle": "Upload a new agent",
+  "agentNameLabel": "Agent name",
+  "characters": "characters",
+  "fileLabel": "File (.zip)",
+  "closeButton": "Close",
+  "uploadSubmitButton": "Upload agent",
+  "uploadLoading": "Upload ongoing...",
+  "uploadErrorGeneric": "An error occurred during upload",
+  "uploadErrorPrefix": "Error:",
+  "errorMissingFields": "You must give a name to your agent and select a file",
+  "errorNameTooLong": "Agent name cannot exceed {{maxLength}} characters",
+  "errorNotLoggedIn": "You must be logged in to upload an agent",
+  "errorFileMustBeZip": "The file must be a .zip",
+  "errorFileTooLarge": "The file must not exceed {{maxSize}}",
+  "uploadSuccess": "Agent uploaded successfully"
+}

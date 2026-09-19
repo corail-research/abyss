@@ -1,0 +1,17 @@
+{
+  "downloadError": "Error while downloading the file",
+  "filterByAgents": "Filter by agents",
+  "allAgents": "All agents",
+  "myAgents": "My agents",
+  "filterByResult": "Filter by result",
+  "badgeAll": "All",
+  "badgeWins": "Wins",
+  "badgeLosses": "Losses",
+  "resultGroupTitle": "Result",
+  "optionAll": "All",
+  "optionWins": "Wins",
+  "optionLosses": "Losses",
+  "loadError": "Error while loading fights.",
+  "noFightsFound": "No fights found with the current filters.",
+  "downloadAllJson": "Download All Json"
+}

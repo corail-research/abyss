@@ -1,0 +1,80 @@
+{
+  "name": "abyss",
+  "homepage": ".",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@chakra-ui/icons": "^2.1.1",
+    "@chakra-ui/react": "2",
+    "@dotenvx/dotenvx": "^2.23.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@faker-js/faker": "^10.6.0",
+    "@jridgewell/gen-mapping": "^0.3.13",
+    "@tanstack/react-query": "^5.102.8",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.6",
+    "@vitejs/plugin-react-swc": "^4.3.3",
+    "axios": "^1.20.0",
+    "file-saver": "^2.0.5",
+    "framer-motion": "^13.1.1",
+    "i18next": "^26.4.1",
+    "i18next-browser-languagedetector": "^8.2.1",
+    "i18next-http-backend": "^4.0.2",
+    "js-cookie": "^3.0.8",
+    "jszip": "^3.10.1",
+    "jwt-decode": "^4.0.0",
+    "msw": "^2.15.0",
+    "orval": "^8.27.0",
+    "path": "^0.12.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-i18next": "^17.0.13",
+    "react-icons": "^5.7.0",
+    "react-paginate": "^8.3.0",
+    "react-router-dom": "^7.18.3",
+    "timers": "^0.1.1",
+    "typescript": "~5.8.0",
+    "vite": "^8.2.2",
+    "vite-plugin-svgr": "^5.2.0",
+    "web-vitals": "^6.2.1"
+  },
+  "scripts": {
+    "start": "vite",
+    "build": "tsc && vite build",
+    "serve": "vite preview",
+    "generate-models": "dotenvx run -f .env -- orval --config orval.config.js"
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@babel/core": "^8.0.0",
+    "@babel/eslint-parser": "^8.0.1",
+    "@eslint/js": "^10.0.1",
+    "@testing-library/dom": "^10.0.0",
+    "@tsconfig/react-native": "^3.0.9",
+    "@types/jest": "^30.0.0",
+    "@types/react": "^19.2.18",
+    "@types/react-test-renderer": "^19.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.69.0",
+    "@typescript-eslint/parser": "^8.69.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-react": "^7.37.5",
+    "globals": "^17.11.0",
+    "typescript-eslint": "^8.69.0"
+  }
+}

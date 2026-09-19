@@ -1,0 +1,15 @@
+{
+  "tabDone": "History",
+  "tabInProgress": "In progress",
+  "tabScheduled": "Upcoming fights",
+  "tabCancelled": "Cancelled",
+  "groupsLoadError": "Error loading groups with agent statistics",
+  "loadError": "Error loading fights",
+  "titleDone": "Fight History",
+  "titleScheduled": "Upcoming Fights",
+  "titleInProgress": "Fights in Progress",
+  "titleCancelled": "Cancelled Fights",
+  "noFightsFound": "No fights found.",
+  "loadMore": "Load more",
+  "searchPlaceholder": "Search by group"
+}

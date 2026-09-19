@@ -1,0 +1,15 @@
+{
+  "tabDone": "Historique",
+  "tabInProgress": "En cours",
+  "tabScheduled": "Prochains combats",
+  "tabCancelled": "Annulés",
+  "groupsLoadError": "Erreur de chargement des groupes avec statistiques agents",
+  "loadError": "Erreur lors du chargement des combats",
+  "titleDone": "Historique des Combats",
+  "titleScheduled": "Prochains Combats",
+  "titleInProgress": "Combats en Cours",
+  "titleCancelled": "Combats Annulés",
+  "noFightsFound": "Aucun combat trouvé.",
+  "loadMore": "Afficher plus",
+  "searchPlaceholder": "Rechercher par groupe"
+}

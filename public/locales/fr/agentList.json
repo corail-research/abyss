@@ -1,0 +1,17 @@
+{
+  "noAgentsFound": "Aucun agent trouvé.",
+  "deleteError": "Erreur lors de la suppression de l'agent",
+  "columnName": "Nom de l'agent",
+  "columnPerformance": "Performance",
+  "columnElo": "ELO",
+  "columnActive": "Actif",
+  "columnActions": "Actions",
+  "cannotActivate": "Vous ne pouvez pas activer cet agent",
+  "updateStatusError": "Erreur lors de la mise à jour du statut de l'agent",
+  "downloadError": "Erreur lors du téléchargement de l'agent",
+  "recordShort": "{{wins}}V-{{losses}}D",
+  "eloLabel": "ELO - {{elo}}",
+  "activeLabel": "Actif",
+  "deleteAriaLabel": "Supprimer l'agent",
+  "downloadAriaLabel": "Télécharger l'agent"
+}

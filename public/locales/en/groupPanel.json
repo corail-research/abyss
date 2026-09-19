@@ -1,0 +1,18 @@
+{
+  "loadError": "Error loading groups",
+  "createTitle": "Create a new group",
+  "labelGroupName": "Group name",
+  "placeholderName": "Name",
+  "createButton": "Create",
+  "creating": "Creating...",
+  "colId": "ID",
+  "colName": "Name",
+  "colLeague": "League",
+  "colActions": "Actions",
+  "created": "Group created.",
+  "createError": "Error while creating.",
+  "updated": "Group updated.",
+  "updateError": "Error while updating.",
+  "deleted": "Group deleted.",
+  "deleteError": "Error while deleting."
+}

@@ -1,0 +1,8 @@
+{
+  "loadError": "Error loading data",
+  "noData": "No league ranking available",
+  "title": "League Leaderboard",
+  "leagueTitle": "League {{league}}",
+  "eloRange": "{{minElo}}-{{maxElo}} Elo",
+  "leagueLogoAlt": "{{league}} logo"
+}

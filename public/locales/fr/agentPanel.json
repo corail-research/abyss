@@ -1,0 +1,26 @@
+{
+  "loadError": "Erreur lors du chargement des agents",
+  "colId": "Identifiant",
+  "colName": "Nom",
+  "colGroup": "Groupe",
+  "colStatus": "Statut",
+  "colRefusalMessage": "Message de refus",
+  "colMessageShort": "Message",
+  "colActions": "Actions",
+  "pagePlaceholder": "Page #",
+  "goButton": "Aller",
+  "updated": "Agent mis à jour.",
+  "updateError": "Erreur lors de la mise à jour.",
+  "deleted": "Agent supprimé.",
+  "deleteError": "Erreur lors de la suppression.",
+  "selectGroupWarning": "Veuillez sélectionner un groupe.",
+  "invalidPage": "Numéro de page invalide.",
+  "status": {
+    "active": "Actif",
+    "inactive": "Inactif",
+    "pending": "En attente",
+    "deleted": "Supprimé",
+    "invalid": "Invalide",
+    "quarantine": "Quarantaine"
+  }
+}

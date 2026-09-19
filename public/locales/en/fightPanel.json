@@ -1,0 +1,28 @@
+{
+  "loadError": "Error loading fights",
+  "pagePlaceholder": "Page #",
+  "goButton": "Go",
+  "colId": "ID",
+  "colStatus": "Status",
+  "colAgent1": "Agent 1",
+  "colAgent2": "Agent 2",
+  "colWinner": "Winner",
+  "colScoreAgent1": "Score Agent 1",
+  "colScoreAgent2": "Score Agent 2",
+  "colScore1": "Score 1",
+  "colScore2": "Score 2",
+  "colActions": "Actions",
+  "winnerNone": "None",
+  "noWinner": "No winner",
+  "updated": "Fight updated.",
+  "updateError": "Error while updating.",
+  "deleted": "Fight deleted.",
+  "deleteError": "Error while deleting.",
+  "invalidPage": "Invalid page number.",
+  "status": {
+    "scheduled": "Scheduled",
+    "in_progress": "In progress",
+    "done": "Done",
+    "cancelled": "Cancelled"
+  }
+}

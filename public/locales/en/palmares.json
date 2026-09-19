@@ -1,0 +1,8 @@
+{
+  "title": "Results",
+  "tabBest": "Best",
+  "tabWorst": "Worst",
+  "loadError": "Error retrieving data",
+  "noData": "No data available",
+  "iconAlt": "{{title}} icon"
+}

@@ -1,0 +1,17 @@
+{
+  "noAgentsFound": "No agents found.",
+  "deleteError": "Error while deleting the agent",
+  "columnName": "Agent name",
+  "columnPerformance": "Performance",
+  "columnElo": "ELO",
+  "columnActive": "Active",
+  "columnActions": "Actions",
+  "cannotActivate": "You cannot activate this agent",
+  "updateStatusError": "Error while updating the agent status",
+  "downloadError": "Error while downloading the agent",
+  "recordShort": "{{wins}}W-{{losses}}L",
+  "eloLabel": "ELO - {{elo}}",
+  "activeLabel": "Active",
+  "deleteAriaLabel": "Delete agent",
+  "downloadAriaLabel": "Download agent"
+}

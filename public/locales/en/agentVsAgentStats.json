@@ -1,0 +1,16 @@
+{
+  "loadError": "Error while loading statistics.",
+  "myAgentsButton": "My agents",
+  "myAgentsGroupTitle": "My agents",
+  "allMyAgents": "All my agents",
+  "opponentsButton": "Opponents",
+  "allAgents": "All agents",
+  "opponentAgentsGroupTitle": "Opponent agents",
+  "columnAgent1": "Agent 1",
+  "columnScore": "Score",
+  "columnAgent2": "Agent 2",
+  "columnWinrate": "Winrate",
+  "noStats": "No statistics available",
+  "pairsShown_one": "{{count}} agent pair shown",
+  "pairsShown_other": "{{count}} agent pairs shown"
+}

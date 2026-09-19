@@ -1,0 +1,12 @@
+{
+  "defaultUser": "Utilisateur",
+  "loadError": "Erreur lors du chargement des données ; vous devrez peut-être vous déconnecter.",
+  "leagueIconAlt": "Icône de ligue",
+  "leagueTitle": "Ligue {{league}}",
+  "noLeague": "Aucune ligue",
+  "tabAgents": "Agents",
+  "tabPastFights": "Anciens combats",
+  "tabUpcomingFights": "Prochains combats",
+  "tabCancelledFights": "Combats annulés",
+  "tabFightStats": "Stats des combats"
+}

@@ -1,0 +1,16 @@
+{
+  "sectionTitle": "Match Configuration",
+  "parallelLabel": "Simultaneous matches",
+  "updateButton": "Update",
+  "updating": "Updating...",
+  "startButton": "Start matches",
+  "stopButton": "Stop matches",
+  "starting": "Starting...",
+  "stopping": "Stopping...",
+  "parallelUpdateSuccess": "Number of simultaneous matches updated",
+  "parallelUpdateError": "Error while updating",
+  "matchesStarted": "Matches started",
+  "matchesStopped": "Matches stopped",
+  "toggleError": "Error while changing state",
+  "loadError": "Error loading the arena"
+}

@@ -1,0 +1,8 @@
+{
+  "title": "Palmarès",
+  "tabBest": "Les meilleurs",
+  "tabWorst": "Les pires",
+  "loadError": "Erreur lors de la récupération des données",
+  "noData": "Aucune donnée disponible",
+  "iconAlt": "Icône {{title}}"
+}

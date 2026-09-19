@@ -1,0 +1,7 @@
+{
+  "valid": "- Votre agent est valide -",
+  "rejected": "- Agent rejeté - {{errorInfo}}",
+  "quarantine": "- Agent en quarantaine - {{errorInfo}}",
+  "pending": "- En attente de validation -",
+  "unknown": "Statut inconnu"
+}

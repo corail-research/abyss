@@ -1,0 +1,28 @@
+{
+  "loadError": "Erreur lors du chargement des combats",
+  "pagePlaceholder": "Page #",
+  "goButton": "Aller",
+  "colId": "Identifiant",
+  "colStatus": "Statut",
+  "colAgent1": "Agent 1",
+  "colAgent2": "Agent 2",
+  "colWinner": "Vainqueur",
+  "colScoreAgent1": "Score Agent 1",
+  "colScoreAgent2": "Score Agent 2",
+  "colScore1": "Score 1",
+  "colScore2": "Score 2",
+  "colActions": "Actions",
+  "winnerNone": "Aucun",
+  "noWinner": "Aucun vainqueur",
+  "updated": "Combat mis à jour.",
+  "updateError": "Erreur lors de la mise à jour.",
+  "deleted": "Combat supprimé.",
+  "deleteError": "Erreur lors de la suppression.",
+  "invalidPage": "Numéro de page invalide.",
+  "status": {
+    "scheduled": "Prévu",
+    "in_progress": "En cours",
+    "done": "Terminé",
+    "cancelled": "Annulé"
+  }
+}

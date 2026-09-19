@@ -1,0 +1,12 @@
+{
+  "defaultUser": "User",
+  "loadError": "Error while loading data; you may need to log out.",
+  "leagueIconAlt": "League icon",
+  "leagueTitle": "{{league}} League",
+  "noLeague": "No league",
+  "tabAgents": "Agents",
+  "tabPastFights": "Past fights",
+  "tabUpcomingFights": "Upcoming fights",
+  "tabCancelledFights": "Cancelled fights",
+  "tabFightStats": "Fight stats"
+}

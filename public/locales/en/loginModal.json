@@ -1,0 +1,11 @@
+{
+  "triggerButton": "Login",
+  "modalTitle": "Login",
+  "studentIdLabel": "Student ID",
+  "studentIdPlaceholder": "ID (xxxxxxx)",
+  "passwordLabel": "Password",
+  "passwordPlaceholder": "Password",
+  "closeButton": "Close",
+  "submitButton": "Enter",
+  "loadingText": "Logging in..."
+}

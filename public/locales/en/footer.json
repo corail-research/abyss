@@ -1,0 +1,16 @@
+{
+  "copyright": "© {{year}} {{group}}. All rights reserved.",
+  "aboutUsHeader": "About us",
+  "aboutSeahorseHeader": "About <1>Seahorse</1>",
+  "aboutCourseHeader": "About INF8175",
+  "productsHeader": "Merch",
+  "labLink": "CORAIL-Lab",
+  "polyLink": "PolyMTL",
+  "pypiLink": "Pypi",
+  "docsLink": "Documentation",
+  "githubLink": "Github",
+  "licenseLink": "License",
+  "courseDescLink": "Course description",
+  "courseSiteLink": "Course site",
+  "goodiesLink": "Get goodies!"
+}

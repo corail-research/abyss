@@ -1,0 +1,12 @@
+{
+  "logoutSuccess": "Vous êtes déconnecté !",
+  "greeting": "Bonjour, {{username}} !",
+  "profileButton": "Profil",
+  "adminButton": "Admin",
+  "logoutButton": "Déconnexion",
+  "loginButton": "Connexion",
+  "navLeaderboard": "Classement",
+  "navFights": "Combats",
+  "navPalmares": "Palmarès",
+  "navRules": "Règles de {{gameName}}"
+}

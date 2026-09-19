@@ -1,0 +1,64 @@
+/* Global mobile optimization styles */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Prevent horizontal scrolling on all containers */
+body, #root {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Mobile specific optimizations */
+@media (max-width: 768px) {
+  /* Ensure all containers respect viewport width */
+  .chakra-container, .chakra-box, .chakra-flex {
+    max-width: 100vw !important;
+    overflow-x: hidden;
+  }
+  
+  /* Make text more readable on mobile */
+  .chakra-text {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  
+  /* Responsive buttons */
+  .chakra-button {
+    min-width: unset;
+  }
+  
+  /* Responsive images */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* Smooth transitions for better UX */
+.chakra-collapse {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Ensure mobile nav doesn't cause horizontal scroll */
+@media (max-width: 767px) {
+  .mobile-nav-container {
+    width: 100%;
+    left: 0;
+    right: 0;
+  }
+}
+
+/* Smooth fade-in transition */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

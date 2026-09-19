@@ -1,0 +1,16 @@
+{
+  "loadError": "Erreur lors du chargement des statistiques.",
+  "myAgentsButton": "Mes agents",
+  "myAgentsGroupTitle": "Mes agents",
+  "allMyAgents": "Tous mes agents",
+  "opponentsButton": "Opposants",
+  "allAgents": "Tous les agents",
+  "opponentAgentsGroupTitle": "Agents opposants",
+  "columnAgent1": "Agent 1",
+  "columnScore": "Score",
+  "columnAgent2": "Agent 2",
+  "columnWinrate": "Taux de victoire",
+  "noStats": "Aucune statistique disponible",
+  "pairsShown_one": "{{count}} paire d'agents affichée",
+  "pairsShown_other": "{{count}} paires d'agents affichées"
+}

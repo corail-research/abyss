@@ -1,0 +1,18 @@
+{
+  "uploadButton": "Téléversez votre agent",
+  "modalTitle": "Téléversez un nouvel agent",
+  "agentNameLabel": "Nom de l'agent",
+  "characters": "caractères",
+  "fileLabel": "Fichier (.zip)",
+  "closeButton": "Fermer",
+  "uploadSubmitButton": "Téléverser l'agent",
+  "uploadLoading": "Téléversement en cours...",
+  "uploadErrorGeneric": "Une erreur est survenue lors de l'upload",
+  "uploadErrorPrefix": "Erreur :",
+  "errorMissingFields": "Vous devez donner un nom à votre agent et sélectionner un fichier",
+  "errorNameTooLong": "Le nom de l'agent ne peut pas dépasser {{maxLength}} caractères",
+  "errorNotLoggedIn": "Vous devez être connecté pour uploader un agent",
+  "errorFileMustBeZip": "Le fichier doit être un .zip",
+  "errorFileTooLarge": "Le fichier ne doit pas dépasser {{maxSize}}",
+  "uploadSuccess": "Agent téléversé avec succès"
+}
