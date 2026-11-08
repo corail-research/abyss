@@ -44,7 +44,8 @@
     "start": "vite",
     "build": "tsc && vite build",
     "serve": "vite preview",
-    "generate-models": "dotenvx run -f .env -- orval --config orval.config.js"
+    "sync-swagger": "dotenvx run -f .env -- node scripts/fetch-swagger.mjs",
+    "generate-models": "npm run sync-swagger && dotenvx run -f .env -- orval --config orval.config.js"
   },
   "eslintConfig": {
     "extends": "react-app"
