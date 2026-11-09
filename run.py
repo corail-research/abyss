@@ -23,7 +23,6 @@ SHUTDOWN_GRACE_PERIOD = 10  # seconds
 
 def run_flask_cmd(*args: str, timeout: int | None = None) -> None:
     """Run a Flask CLI command from the project directory."""
-    """Execute Flask command (migrations, seed)."""
     subprocess.run(
         [sys.executable, "-m", "flask",
          "--app", "backend.app:create_app", *args],
@@ -104,7 +103,7 @@ if __name__ == '__main__':
     logger_process = Process(
             target=start_process,
             name="Abyss Logger",
-            args=[file_and_channels],
+            args=[file_and_channels, logger_ready],
             daemon=True)
     logger_process.start()
 
@@ -119,17 +118,14 @@ if __name__ == '__main__':
                 f"Logger not ready after {LOGGER_START_TIMEOUT}s")
 
         # 2. Schemas and initial data (once)
-        run_flask_cmd("db-setup")
-        run_flask_cmd("seed")
+        run_flask_cmd("db-setup", timeout=db_setup_timeout)
+        run_flask_cmd("seed", timeout=120)
 
         # 3. Autonomous services
         processes = {
             "flask": Process(
-                target=subprocess.run,
+                target=run_gunicorn,
                 name="Abyss Flask app",
-                args=[[sys.executable, "-m", "gunicorn",
-                       "--config", os.path.join(BASE_DIR, "gunicorn.conf.py"),
-                       "backend.app:create_app()"]],
                 daemon=True),
             "arena": Process(
                 target=launch_arena,

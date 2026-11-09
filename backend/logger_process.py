@@ -1,3 +1,4 @@
+import os
 import logging
 import redis
 
@@ -5,6 +6,7 @@ from threading import Event
 
 from backend.utils.logging import (
         RedisPubSubListener, GzipTimedRotatingFileHandler)
+from backend.runtime import new_redis_client
 
 _FORMAT = '[%(asctime)s] [%(process)d] %(levelname)s in %(module)s: %(message)s'
 
@@ -24,7 +26,8 @@ def start_process(file_and_channels: dict[str, list[str]],
     logger = logging.getLogger()
 
     formatter = logging.Formatter(_FORMAT)
-    r = redis.StrictRedis(decode_responses=True)
+    r = new_redis_client(
+            os.environ.get("REDIS_URL", "redis://localhost:6379/0"))
     listeners = []
 
     for file, channels in file_and_channels.items():
@@ -34,15 +37,13 @@ def start_process(file_and_channels: dict[str, list[str]],
 
     logger.info("Logging processes ready")
 
+    if ready_event is not None:
+        ready_event.set()
+
     wait_event = Event()
     wait_event.clear()
 
     try:
-        logger.info("Logging processes ready")
-
-        if ready_event is not None:
-            ready_event.set()
-
         wait_event.wait()
     except Exception as e:
         logger.error('Exiting logger process: %s', str(e))
