@@ -103,6 +103,12 @@ def create_app(freeze=False, freeze_dest=None):
         from backend.bootstrap import seed_defaults
         seed_defaults(app)
 
+    @app.cli.command("db-setup")
+    def db_setup_command():
+        """Apply Alembic migrations (on existing db)."""
+        from backend.db_setup import ensure_schema
+        ensure_schema(app)
+
     @app.errorhandler(400)
     def bad_request_error(e):
         app.logger.warning(f'Bad Request: {str(e)}')

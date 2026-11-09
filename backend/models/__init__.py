@@ -73,8 +73,10 @@ class Student(db.Model):
 
 class CustomStats(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    fight_id = db.Column(db.Integer, db.ForeignKey('fight.id'), nullable=False)
-    agent_id = db.Column(db.Integer, db.ForeignKey('agent.id'), nullable=False)
+    fight_id = db.Column(db.Integer, db.ForeignKey('fight.id'),
+                         nullable=False, index=True)
+    agent_id = db.Column(db.Integer, db.ForeignKey('agent.id'),
+                         nullable=False, index=True)
     name = db.Column(db.String(120), nullable=False)
     value = db.Column(db.Integer, nullable=False)
     aggregation = db.Column(
@@ -251,7 +253,8 @@ class Fight(db.Model):
                            index=True)
     player1 = db.relationship('Agent', foreign_keys=[player1_id])
     player2 = db.relationship('Agent', foreign_keys=[player2_id])
-    date = db.Column(db.DateTime(timezone=True), nullable=True)
+    date = db.Column(db.DateTime(timezone=True),
+                     nullable=True, index=True)
     scheduled_date = db.Column(db.DateTime(timezone=True), nullable=True)
     custom_stats = db.relationship('CustomStats', lazy=True)
 

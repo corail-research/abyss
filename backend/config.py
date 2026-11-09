@@ -63,7 +63,12 @@ class Config:
     SQLALCHEMY_ENGINE_OPTIONS = {
         "connect_args": {
             "options": "-c timezone=utc"
-        }
+        },
+        "pool_size": int(os.environ.get("DB_POOL_SIZE", 8)),
+        "max_overflow": int(os.environ.get("DB_MAX_OVERFLOW", 4)),
+        "pool_timeout": int(os.environ.get("DB_POOL_TIMEOUT", 30)),
+        "pool_recycle": int(os.environ.get("DB_POOL_RECYCLE", 1800)),
+        "pool_pre_ping": True,
     }
 
     ABYSS_ADMIN_NAME = os.environ.get("ABYSS_ADMIN_NAME", "CORAIL")
