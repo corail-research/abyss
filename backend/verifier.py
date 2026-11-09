@@ -19,10 +19,9 @@ from backend.config import Config
 from backend.utils.fight_env import (
         create_env, post_play_env,
         get_error_verify_log, compress_play_env_files)
-from backend.utils.manager import AbyssManager
+from backend.runtime import new_redis_client
 
-
-def run_verifier(manager: AbyssManager, redis_conn: redis.StrictRedis):
+def run_verifier(redis_conn: redis.StrictRedis):
     verifier_logger = logging.getLogger("arena_logger")
     verifier_logger.setLevel(logging.INFO)
 
@@ -47,18 +46,11 @@ def run_verifier(manager: AbyssManager, redis_conn: redis.StrictRedis):
     verifier_logger.addHandler(console_handler)
 
     client = docker.from_env()
-    manager.connect()
 
     engine = create_engine(Config.SQLALCHEMY_DATABASE_URI)
     Session = sessionmaker(bind=engine)
 
     VERIFIER_PORT = int(os.environ.get("ABYSS_VERIFIER_PORT", 16000))
-
-    LOGGER_AVAILABLE = manager.logger_state()
-    FLASK_AVAILABLE = manager.flask_state()
-
-    LOGGER_AVAILABLE.wait()
-    FLASK_AVAILABLE.wait()
 
     verifier_logger.info("Verifier started")
 
@@ -185,10 +177,5 @@ def launch_verifier(base_dir):
         shutil.copy("./docker/entrypoint.sh", "./verifyground/")
     os.chdir("./verifyground")
 
-    manager = AbyssManager(
-            ('', int(os.environ.get("ABYSS_MANAGER_PORT", 50000))),
-            authkey=eval(os.environ.get("ABYSS_MANAGER_AUTHKEY",
-                                        "b'abracadabra'")))
-    redis_conn = redis.StrictRedis(decode_responses=True)
-
-    run_verifier(manager, redis_conn)
+    redis_conn = new_redis_client(Config.REDIS_URL)
+    run_verifier(redis_conn)

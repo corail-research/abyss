@@ -1,12 +1,10 @@
 import logging
 import redis
-import time
-import os
 
 from threading import Event
 
-from backend.utils.logging import RedisPubSubListener, GzipTimedRotatingFileHandler
-from backend.utils.manager import AbyssManager
+from backend.utils.logging import (
+        RedisPubSubListener, GzipTimedRotatingFileHandler)
 
 
 def setup_listener(r: redis.StrictRedis, filename: str, channels_name: list[str], formatter: logging.Formatter) -> RedisPubSubListener:
@@ -19,9 +17,6 @@ def start_process(file_and_channels: dict[str, list[str]]):
     logging.basicConfig()
     logger = logging.getLogger()
 
-    manager = AbyssManager(('', int(os.environ.get("ABYSS_MANAGER_PORT", 50000))), authkey=eval(os.environ.get("ABYSS_MANAGER_AUTHKEY", "b'abracadabra'")))
-    manager.connect()
-
     formatter = logging.Formatter('[%(asctime)s] [%(process)d] %(levelname)s in %(module)s: %(message)s')
     r = redis.StrictRedis(decode_responses=True)
     listeners = []
@@ -30,9 +25,8 @@ def start_process(file_and_channels: dict[str, list[str]]):
         listener = setup_listener(r, file, channels, formatter)
         listener.start()
         listeners.append(listener)
-    
+
     logger.info("Logging processes ready")
-    manager.logger_state().set()
 
     wait_event = Event()
     wait_event.clear()
@@ -44,4 +38,4 @@ def start_process(file_and_channels: dict[str, list[str]]):
     finally:
         for listener in listeners:
             listener.stop()
-        
+

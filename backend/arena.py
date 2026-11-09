@@ -15,15 +15,16 @@ from rlh import RedisPubSubLogHandler
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, joinedload
 
-from backend.models import Fight, Agent, CustomStats
+from backend.models import Fight, Agent, Arena, CustomStats
 from backend.models.enums import FightStatus, AgentStatus
 from backend.utils.fight_env import (
         create_env, post_play_env, get_record,
         change_agent_name_in_json, BrokenMatch,
         compress_play_env_files)
 from backend.utils.matchmaking import compute_matches, calculate_elo_update
-from backend.utils.manager import AbyssManager
 from backend.utils.leagues import update_league_standings
+from backend.runtime import (
+        new_redis_client, set_arena_enabled, wait_arena_enabled)
 
 from backend.config import Config
 
@@ -140,20 +141,23 @@ def update_elo_for_fight(fight: Fight, db_session, logger: logging.Logger):
     logger.info(
         f"Updated ELO: {player1.name} {player1.elo}, {player2.name} {player2.elo}")
 
-def run_arena(manager: AbyssManager, redis_conn: redis.StrictRedis):
+
+def run_arena(redis_conn: redis.StrictRedis):
     arena_logger = logging.getLogger("arena_logger")
     arena_logger.setLevel(logging.INFO)
 
-    formatter = logging.Formatter('[%(asctime)s] [%(process)d] %(levelname)s in %(module)s: %(message)s')
+    formatter = logging.Formatter(
+            '[%(asctime)s] [%(process)d] %(levelname)s in %(module)s: %(message)s')
 
-    info_handler = RedisPubSubLogHandler(channel_name="ABYSS_ARENA_LOGS",
-                                        fields=["msg", "module", "levelname", "process", "created"])
+    info_handler = RedisPubSubLogHandler(
+            channel_name="ABYSS_ARENA_LOGS",
+            fields=["msg", "module", "levelname", "process", "created"])
     info_handler.setFormatter(formatter)
     arena_logger.addHandler(info_handler)
 
-
-    error_handler = RedisPubSubLogHandler(channel_name="ABYSS_ARENA_ERRORS",
-                                        fields=["msg", "module", "levelname", "process", "created"])
+    error_handler = RedisPubSubLogHandler(
+            channel_name="ABYSS_ARENA_ERRORS",
+            fields=["msg", "module", "levelname", "process", "created"])
     error_handler.setFormatter(formatter)
     error_handler.setLevel(logging.ERROR)
     arena_logger.addHandler(error_handler)
@@ -162,38 +166,35 @@ def run_arena(manager: AbyssManager, redis_conn: redis.StrictRedis):
     console_handler.setFormatter(formatter)
     arena_logger.addHandler(console_handler)
 
-
     client = docker.from_env()
 
     URL = Config.SQLALCHEMY_DATABASE_URI
     LEAGUES = Config.LEAGUES
 
-    manager.connect()
-
-    LOGGER_AVAILABLE = manager.logger_state()
-    FLASK_AVAILABLE = manager.flask_state()
-    STATE_EVENT = manager.arena_state()
-
-    LOGGER_AVAILABLE.wait()
-    FLASK_AVAILABLE.wait()
-
-    arena_logger.info("Arena started")
     db_session = Session()
+    matchs_info = {}
 
     try:
         arena_logger.info("Connection established")
+        arena_logger.info("Arena started")
 
         first_epoch = True
         while True:
-            STATE_EVENT.wait()
+            wait_arena_enabled(redis_conn)
 
-            MAX_MATCH = int(redis_conn.get("abyss_parallel_match"))
+            db_session.expire_all()
+            arena = db_session.get(Arena, True)
+            if arena is None:
+                raise RuntimeError(
+                        "Arena config not found in DB."
+                        "Please launch `flask seed`")
+
+            MAX_MATCH = arena.parallel_match
             arena_logger.info("START EPOCH")
             arena_logger.info(f"MAX PARALLEL MATCH: {MAX_MATCH}")
 
             ports = [16001 + i for i in range(MAX_MATCH)]
             cpus = [i for i in range(MAX_MATCH)]
-            matchs_info = {}
             used_ports = {}
             used_cpus = {}
             event_counter = Event()
@@ -508,10 +509,16 @@ def run_arena(manager: AbyssManager, redis_conn: redis.StrictRedis):
                 if matchs_info[key]["container"] is not None:
                     try:
                         matchs_info[key]["container"].kill()
-                    except Exception as _:
-                       pass
+                    except Exception:
+                        pass
+        try:
+            set_arena_enabled(redis_conn, False)
+            db_session.rollback()
+            db_session.query(Arena).filter_by(id=True).update({"state": False})
+            db_session.commit()
+        except Exception:
+            arena_logger.exception("Cannot deactivate arena")
     finally:
-        STATE_EVENT.clear()
         client.close()
         db_session.close()
 
@@ -525,23 +532,17 @@ def launch_arena(base_dir):
     # Create arena playground
     if not os.path.exists("./playground"):
         os.mkdir("./playground")
-    if not os.path.exists("./playground/entrypoint.sh") or not filecmp.cmp("./playground/entrypoint.sh", "./playground/entrypoint.sh", False):
+    if (not os.path.exists("./playground/entrypoint.sh") or
+        not filecmp.cmp("./playground/entrypoint.sh",
+                        "./playground/entrypoint.sh", False)):
         shutil.copy("./docker/entrypoint.sh", "./playground/")
     os.chdir("./playground")
 
-    manager = AbyssManager(('', int(os.environ.get("ABYSS_MANAGER_PORT", 50000))), authkey=eval(os.environ.get("ABYSS_MANAGER_AUTHKEY", "b'abracadabra'")))
-    redis_conn = redis.StrictRedis(decode_responses=True)
+    redis_conn = new_redis_client(Config.REDIS_URL)
+    run_arena(redis_conn)
 
-    run_arena(manager, redis_conn)
-    
 
 if __name__ == '__main__':
-    manager = AbyssManager(('', int(os.environ.get("ABYSS_MANAGER_PORT", 50000))), authkey=eval(os.environ.get("ABYSS_MANAGER_AUTHKEY", "b'abracadabra'")))
-    manager.start()
-    logging_state = manager.logging_state()
-    flask_state = manager.flask_state()
-    arena_state = manager.arena_state()
-
     BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 
     launch_arena(BASE_DIR)

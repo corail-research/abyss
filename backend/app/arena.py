@@ -1,10 +1,11 @@
 from flask import request, current_app
 from flask_restx import Resource
 
+from backend.app.utils import log_and_return
 from backend.db import db
 from backend.models.schemas import ArenaSchema
 from backend.models import Arena
-from backend.app.utils import log_and_return
+from backend.runtime import set_arena_enabled
 
 from backend.app.api import api, admin_required
 
@@ -29,20 +30,13 @@ class ArenaState(Resource):
         try:
             data = request.get_json()
 
-            arena.state = data.get("state", arena.state)
-            arena.parallel_match = data.get("parallel_match",
-                                            arena.parallel_match)
+            if data.get("state") is not None:
+                arena.state = bool(data.get("state"))
+            if data.get("parallel_match") is not None:
+                arena.parallel_match = int(data.get("parallel_match"))
             db.session.commit()
 
-            if data.get("state") is not None:
-                if data.get("state"):
-                    current_app.config["ABYSS_MANAGER"].arena_state().set()
-                else:
-                    current_app.config["ABYSS_MANAGER"].arena_state().clear()
-            if data.get("parallel_match") is not None:
-                current_app.config["REDIS"].set("abyss_parallel_match",
-                                                data.get("parallel_match"))
-
+            set_arena_enabled(current_app.config["REDIS"], arena.state)
             return ArenaSchema().dump(arena)
 
         except Exception as e:

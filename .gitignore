@@ -5,7 +5,6 @@ __pycache__/
 *logs/*
 
 # Custom ignores
-*backend/migrations*
 *backend/app.db
 *backend/uploads*
 *backend/app.db
