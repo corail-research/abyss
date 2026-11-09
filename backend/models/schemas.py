@@ -53,6 +53,22 @@ class CustomStatsSchema(Schema):
     aggregation = fields.Enum(CustomStatAggregation, by_value=True)
 
 
+class FightAgentSchema(Schema):
+    """Agent nested inside a fight.
+
+    No ``custom_stats`` here: ``Agent.custom_stats`` is the agent's whole
+    history and grows with every fight, while the stats of this precise fight
+    already live in ``FightSchema.custom_stats`` (with ``agent_id``).
+    """
+    id = fields.Int()
+    status = fields.Enum(AgentStatus, by_value=True)
+    elo = fields.Float()
+    name = fields.Str()
+    group = fields.Nested('GroupSchema', only=('id', 'name'))
+    peak_elo = fields.Int()
+    refusal_message = fields.Str()
+
+
 class FightSchema(Schema):
     id = fields.Int()
     score_player1 = fields.Int()
@@ -61,8 +77,8 @@ class FightSchema(Schema):
     player1_id = fields.Int()
     player2_id = fields.Int()
     date = fields.DateTime()
-    player1 = fields.Nested('AgentSchema')
-    player2 = fields.Nested('AgentSchema')
+    player1 = fields.Nested('FightAgentSchema')
+    player2 = fields.Nested('FightAgentSchema')
     status = fields.Enum(FightStatus, by_value=True)
     scheduled_date = fields.DateTime()
     custom_stats = fields.Nested('CustomStatsSchema', many=True)
