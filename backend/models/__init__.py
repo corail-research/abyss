@@ -17,7 +17,8 @@ class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False)
     password = db.Column(db.String(128), nullable=False)
-    group_id = db.Column(db.Integer, db.ForeignKey('group.id'), nullable=True)
+    group_id = db.Column(db.Integer, db.ForeignKey('group.id'),
+                         nullable=False, index=True)
     role = db.Column(db.String(64), nullable=False, default='student')
 
     def __repr__(self):
@@ -109,7 +110,8 @@ class Agent(db.Model):
     # Only restrict the name size on the backend side and not the database
     name = db.Column(db.String(500), nullable=False)
     elo = db.Column(db.Float, default=1000.0)
-    group_id = db.Column(db.Integer, db.ForeignKey('group.id'), nullable=False)
+    group_id = db.Column(db.Integer, db.ForeignKey('group.id'),
+                         nullable=False, index=True)
     status = db.Column(
             db.Enum(AgentStatus), default=AgentStatus.PENDING, nullable=False)
     peak_elo = db.Column(db.Integer, default=1000.0)
@@ -231,18 +233,22 @@ class Fight(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.Enum(FightStatus),
                        default=FightStatus.SCHEDULED,
-                       nullable=False)
+                       nullable=False,
+                       index=True)
     score_player1 = db.Column(db.Integer, nullable=True)
     score_player2 = db.Column(db.Integer, nullable=True)
     winner_id = db.Column(db.Integer,
                           db.ForeignKey('agent.id'),
-                          nullable=True)
+                          nullable=True,
+                          index=True)
     player1_id = db.Column(db.Integer,
                            db.ForeignKey('agent.id'),
-                           nullable=False)
+                           nullable=False,
+                           index=True)
     player2_id = db.Column(db.Integer,
                            db.ForeignKey('agent.id'),
-                           nullable=False)
+                           nullable=False,
+                           index=True)
     player1 = db.relationship('Agent', foreign_keys=[player1_id])
     player2 = db.relationship('Agent', foreign_keys=[player2_id])
     date = db.Column(db.DateTime(timezone=True), nullable=True)
