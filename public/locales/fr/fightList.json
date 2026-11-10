@@ -13,5 +13,6 @@
   "optionLosses": "Défaites",
   "loadError": "Erreur lors du chargement des combats.",
   "noFightsFound": "Aucun combat trouvé avec les filtres actuels.",
-  "downloadAllJson": "Télécharger tous les JSON"
+  "downloadAllJson": "Télécharger tous les JSON",
+  "downloading": "Téléchargement en cours"
 }

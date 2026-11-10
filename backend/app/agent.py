@@ -9,11 +9,13 @@ from io import BytesIO
 from flask import request, current_app, send_file
 from flask_restx import Resource
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy.orm import joinedload
 
 from backend.db import db
 from backend.models.enums import AgentStatus
 from backend.models.schemas import AgentSchema
 from backend.models import Student, Group, Fight, Agent
+from backend.app.fields import schema_for
 from backend.app.utils import (
         is_right_extension, process_zip_file, log_and_return)
 from backend.app.stats import get_stats, get_stats_uncounted
@@ -59,7 +61,7 @@ class AgentCollection(Resource):
                                   500)
 
     @agent_ns.marshal_list_with(agent_model)
-    @api.doc(params={'paginate': 'Boolean indicating if we want to paginate the results or not',
+    @api.doc(params={'paginate': "'true' if we want to paginate the results",
                      'page': 'Page number',
                      'limit': 'Number of items per page',
                      'status': 'Agents status'})
@@ -70,38 +72,50 @@ class AgentCollection(Resource):
             page = request.args.get('page', 1, type=int)
             limit = request.args.get('limit', 20, type=int)
             status = request.args.get(
-                    'status', 
-                    [], 
+                    'status', [],
                     type=lambda x: x.split(','))
-            agent_ids = request.args.get('agent_ids', [], type=lambda x: x.split(','))
+            agent_ids = request.args.get(
+                    'agent_ids', [], type=lambda x: x.split(','))
 
             real_status = []
             for s in status:
                 if not AgentStatus.has_value(s):
-                    return log_and_return(current_app.logger,f"Unknown status: {s}", "warning")
+                    return log_and_return(
+                            current_app.logger,
+                            f"Unknown status: {s}", "warning")
                 real_status.append(AgentStatus(s))
 
             real_ids = []
             for s in agent_ids:
                 if not s.isnumeric():
-                    return log_and_return(current_app.logger,f"Unknown id: {s}", "warning")
+                    return log_and_return(
+                            current_app.logger,
+                            f"Unknown id: {s}", "warning")
                 real_ids.append(int(s))
 
-            query = Agent.query.order_by(Agent.id.desc())
+            query = (Agent.query
+                     .options(joinedload(Agent.group))
+                     .order_by(Agent.id.desc()))
 
             if len(real_status) > 0:
                 query = query.filter(Agent.status.in_(real_status))
-            
+
             if len(real_ids) > 0:
                 query = query.filter(Agent.id.in_(real_ids))
 
             if paginate:
-                query = query.paginate(page=page, per_page=limit, error_out=False)
+                query = query.paginate(
+                        page=page, per_page=limit, error_out=False)
 
+            return schema_for(
+                    AgentSchema,
+                    request.headers.get("X-Fields")).dump(query, many=True)
 
-            return AgentSchema().dump(query, many=True)
         except Exception as e:
-            return log_and_return(current_app.logger,f'Unexpected Error: {str(e)}', 'error', 500)
+            return log_and_return(
+                    current_app.logger,
+                    f'Unexpected Error: {str(e)}',
+                    'error', 500)
 
 
 @agent_ns.route('/count')
@@ -113,15 +127,19 @@ class CountAgent(Resource):
         real_status = []
         for s in status:
             if not AgentStatus.has_value(s):
-                return log_and_return(current_app.logger,f"Unknown status: {s}", "warning")
+                return log_and_return(
+                        current_app.logger,
+                        f"Unknown status: {s}",
+                        "warning")
             real_status.append(AgentStatus(s))
 
         query = Agent.query
 
         if len(real_status) > 0:
             query = query.filter(Agent.status.in_(real_status))
-        
+
         return query.count()
+
 
 @agent_ns.route('/group/<int:group_id>')
 class AgentGroup(Resource):
@@ -146,12 +164,16 @@ class AgentGroup(Resource):
         real_status = []
         for s in status:
             if not AgentStatus.has_value(s):
-                return log_and_return(current_app.logger,f"Unknown status: {s}", "warning")
+                return log_and_return(
+                        current_app.logger,
+                        f"Unknown status: {s}",
+                        "warning")
             real_status.append(AgentStatus(s))
 
-        query = Agent.query.filter(
-            Agent.group_id == group_id
-        ).order_by(Agent.id.desc())
+        query = (Agent.query
+                 .options(joinedload(Agent.group))
+                 .filter(Agent.group_id == group_id)
+                 .order_by(Agent.id.desc()))
 
         if len(real_status) > 0:
             query = query.filter(Agent.status.in_(real_status))
@@ -160,15 +182,16 @@ class AgentGroup(Resource):
             query = query.paginate(page=page, per_page=limit, error_out=False)
 
         if include_stats:
+            # Full schema on purpose: the per-agent stats are merged by id.
             agents = AgentSchema().dump(query, many=True)
-            
+
             stats = get_stats(group_id)
             for key, stat in stats.items():
-                    if 'per_agent' in key:
-                        for agent in agents:
-                            if agent["id"] in stat:
-                                agent[key.rstrip('per_agent')] = stat[agent['id']]
-                
+                if 'per_agent' in key:
+                    for agent in agents:
+                        if agent["id"] in stat:
+                            agent[key.rstrip('per_agent')] = stat[agent['id']]
+
             uncounted_stats = get_stats_uncounted(group_id)
             for key, stat in uncounted_stats.items():
                 for agent in agents:
@@ -177,25 +200,36 @@ class AgentGroup(Resource):
 
             return agents
 
-        return AgentSchema().dump(query, many=True)
+        return schema_for(
+                AgentSchema,
+                request.headers.get("X-Fields")).dump(query, many=True)
+
 
 @agent_ns.route('/<int:id>')
 class AgentItem(Resource):
     @agent_ns.marshal_with(agent_model)
     def get(self, id):
         agent = Agent.query.get_or_404(id)
-        return AgentSchema().dump(agent)
-    
+        return schema_for(
+                AgentSchema,
+                request.headers.get("X-Fields")).dump(agent)
+
     @admin_required
     @agent_ns.expect(update_agent_model)
     @agent_ns.marshal_with(agent_model)
     def patch(self, id):
         agent = Agent.query.get_or_404(id)
+        name_max_len = current_app.config["AGENT_NAME_MAX_LENGTH"]
         try:
             data = request.get_json()
             for key, value in data.items():
-                if key == 'name' and len(value) > current_app.config["AGENT_NAME_MAX_LENGTH"]:
-                    return log_and_return(current_app.logger,"Agent name cannot exceed 45 characters", "warning", 400)
+                if (key == 'name' and
+                        len(value) > name_max_len):
+                    return log_and_return(
+                            current_app.logger,
+                            f"Agent name cannot exceed {name_max_len} "
+                            "characters",
+                            "warning", 400)
                 if key == 'status':
                     value = AgentStatus(value)
                 if key == 'group_id':
@@ -206,14 +240,20 @@ class AgentItem(Resource):
                         os.makedirs(new_fname)
                     os.rename(old_fname, new_fname)
                 setattr(agent, key, value)
-                
+
             db.session.commit()
-            log_and_return(current_app.logger,f'Agent {agent.name} patched', status_code=200)
+            log_and_return(
+                    current_app.logger,
+                    f'Agent {agent.name} patched',
+                    status_code=200)
             return AgentSchema().dump(agent)
-        
+
         except Exception as e:
-            return log_and_return(current_app.logger,f'Unexpected Error: {str(e)}', 'error', 500)
-    
+            return log_and_return(
+                    current_app.logger,
+                    f'Unexpected Error: {str(e)}',
+                    'error', 500)
+
     @admin_required
     def delete(self, id):
         agent = Agent.query.get_or_404(id)

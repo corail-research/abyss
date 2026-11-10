@@ -55,8 +55,9 @@ const fetchFightsPage = async ({ pageParam = 1, status }) => {
         headers: {
             "X-Fields":
                 "id,date,scheduled_date,score_player1,score_player2," +
-                "player1{name,group{id,name},elo,id,custom_stats{name,value}}," +
-                "player2{name,group{id,name},elo,id,custom_stats{name,value}}"
+                "player1{name,group{id,name},elo,id}," +
+                "player2{name,group{id,name},elo,id}," +
+                "custom_stats{agent_id,name,value}"
         },
     });
 
@@ -141,7 +142,6 @@ const FightHistory = ({ status, groups, selected }) => {
                     n_defeats: p1Stats?.n_defeats ?? fight.player1.n_defeats,
                     n_points_scored: p1Stats?.n_points_scored ?? fight.player1.n_points_scored,
                     n_points_conceded: p1Stats?.n_points_conceded ?? fight.player1.n_points_conceded,
-                    custom_stats: fight.player1.custom_stats || [],
                 },
                 player2: {
                     ...fight.player2,
@@ -149,7 +149,6 @@ const FightHistory = ({ status, groups, selected }) => {
                     n_defeats: p2Stats?.n_defeats ?? fight.player2.n_defeats,
                     n_points_scored: p2Stats?.n_points_scored ?? fight.player2.n_points_scored,
                     n_points_conceded: p2Stats?.n_points_conceded ?? fight.player2.n_points_conceded,
-                    custom_stats: fight.player2.custom_stats || [],
                 },
             };
         });

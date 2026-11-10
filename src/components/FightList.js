@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import {
     Box, HStack, VStack, Button, Menu, MenuButton,
     MenuList, MenuItem, MenuOptionGroup, MenuItemOption,
@@ -20,7 +20,8 @@ import FightListSkeleton from './skeletons/FightListSkeleton.js';
 import { FightStatus, useColors } from '../constants/constants.js';
 import {
     getFightGroup, getCountFightGroup,
-    getFightItemLog, getFightItemJson
+    getFightItemLog, getFightItemJson,
+    getFightGroupArchive
 } from '../api/fights/fights.ts';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useDelayedFlag } from '../hooks/useDelayedFlag.js';
@@ -114,6 +115,28 @@ const FightList = ({ myAgents, status, groups, selected }) => {
         retry: 1
     });
 
+    const {
+        mutate: downloadArchive,
+        isPending: isDownloadingAll
+    } = useMutation({
+        mutationFn: ({ groupId, agentIds }) => {
+            const params = agentIds
+                ? { agent_ids: agentIds }
+                : undefined;
+
+            return getFightGroupArchive(groupId, params, {
+                ...authState.options,
+                responseType: 'blob',
+            });
+        },
+        onSuccess: (blob, variables) => {
+            saveAs(blob, `fights_group_${variables.groupId}.zip`);
+        },
+        onError: () => {
+            handleShowError();
+        },
+        retry: false
+    });
 
     // combine
     const isLoading = fightsLoading || countLoading || (selected && !fights && totalFights === -1);
@@ -171,26 +194,18 @@ const FightList = ({ myAgents, status, groups, selected }) => {
         }
     }, [handleShowError]);
 
-    const downloadAllJson = useCallback(async () => {
-        try {
-            const responseFights = await getFightGroup(groupId, { status: "done" });
-            const zip = new JSZip();
+    const downloadAllJson = useCallback(() => {
+        if (!groupId) return;
 
-            const promises = responseFights.map(async (fight) => {
-                try {
-                    const json = await getFightItemJson(fight.id);
-                    zip.file(`fight_${fight.id}.json`, JSON.stringify(json));
-                } catch (error) { undefined }
-            });
+        const agentsIds = myAgents
+            .map((agent) => agent.id)
+            .join(',');
 
-            await Promise.all(promises);
-
-            const content = await zip.generateAsync({ type: 'blob' })
-            saveAs(content, 'fights.zip');
-        } catch {
-            handleShowError();
-        }
-    }, [groupId, handleShowError]);
+        downloadArchive({
+            groupId,
+            agentsIds: agentsIds || undefined
+        });
+    }, [downloadArchive, groupId, myAgents]);
 
     const filters = useMemo(() => (
         <Flex
@@ -423,7 +438,13 @@ const FightList = ({ myAgents, status, groups, selected }) => {
                     </VStack>
                     {(status === FightStatus.DONE || status === FightStatus.CANCELLED) && (
                         <HStack justifyContent="center" alignItems="center" width={"100%"} mt={4}>
-                            <Button leftIcon={<DownloadIcon />} colorScheme="teal" onClick={downloadAllJson}>
+                            <Button
+                                leftIcon={<DownloadIcon />}
+                                colorScheme="teal"
+                                onClick={downloadAllJson}
+                                isLoading={isDownloadingAll}
+                                loadingText={t('downloading')}
+                            >
                                 {t('downloadAllJson')}
                             </Button>
                         </HStack>

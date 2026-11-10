@@ -2,12 +2,19 @@ import re
 import shutil
 import os
 import traceback
+import gzip
+import tempfile
+import zipfile
 
 from datetime import datetime, timezone
 
-from flask import json, request, jsonify, current_app, send_from_directory
+from flask import (
+        json, request, jsonify, current_app,
+        has_request_context, send_from_directory, send_file)
 from flask_restx import Resource
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, or_, func, select
+from sqlalchemy.orm import joinedload, selectinload
+
 from backend.db import db
 
 from backend.models.enums import FightStatus, AgentStatus
@@ -21,8 +28,50 @@ from backend.app.api import (
         fight_post_model, fight_model, custom_stats_model,
         update_fight_model
         )
+from backend.app.fields import schema_for
 
 fight_ns = api.namespace('fights', description='Fight operations')
+
+_RECORD_GZ = re.compile(r"^__REC__\d+\.json\.gz$")
+_RECORD_JSON = re.compile(r"^__REC__\d+\.json$")
+
+
+def _fight_query():
+    """Fight query with the relations serialized by FightSchema."""
+    return Fight.query.options(
+        joinedload(Fight.player1).joinedload(Agent.group),
+        joinedload(Fight.player2).joinedload(Agent.group),
+        selectinload(Fight.custom_stats))
+
+
+def _x_fields():
+    return request.headers.get("X-Fields") if has_request_context() else None
+
+
+def _archive_record_path(fight_id):
+    """
+    Return tuple (zip name, path, is_gzipped) or None.
+    Prefer __REC__*.json.gz, otherwise fall back to __REC__*.json.
+    """
+    directory = os.path.join(
+        current_app.config["FIGHTS_FOLDER"],
+        f"fight_{fight_id}",
+    )
+    if not os.path.isdir(directory):
+        return None
+
+    names = sorted(os.listdir(directory))
+
+    for name in names:
+        if _RECORD_GZ.fullmatch(name):
+            return name, os.path.join(directory, name), True
+
+    for name in names:
+        if _RECORD_JSON.fullmatch(name):
+            # Compress it on the fly; keep the .gz extension in the entry name
+            return name + ".gz", os.path.join(directory, name), False
+
+    return None
 
 
 def parse_datetime_utc(value):
@@ -48,7 +97,7 @@ def parse_datetime_utc(value):
 
 
 def get_fight_list(status=[], paginate=False, page=1, limit=20, agent_ids=[]):
-    query = Fight.query.order_by(Fight.id.desc())
+    query = _fight_query().order_by(Fight.id.desc())
 
     if len(status) > 0:
         query = query.filter(Fight.status.in_(status))
@@ -60,7 +109,7 @@ def get_fight_list(status=[], paginate=False, page=1, limit=20, agent_ids=[]):
     if paginate:
         query = query.paginate(page=page, per_page=limit, error_out=False)
 
-    return FightSchema().dump(query, many=True)
+    return schema_for(FightSchema, _x_fields()).dump(query, many=True)
 
 
 @fight_ns.route('')
@@ -117,10 +166,10 @@ class FightCollection(Resource):
                     'error', 500)
 
     @api.response(200, 'Success', [fight_model])
-    @api.doc(params={'paginate': 'Paginate the results or not',
+    @api.doc(params={'paginate': 'Paginate results or not',
                      'page': 'Page number',
                      'limit': 'Number of items per page',
-                     'status': 'Status of the fight'})
+                     'status': 'Fight status'})
     def get(self):
         try:
             paginate = request.args.get(
@@ -213,7 +262,7 @@ class CountFightsStatus(Resource):
 @fight_ns.route('/group/<int:group_id>')
 class FightGroup(Resource):
     @api.response(200, 'Success', [fight_model])
-    @api.doc(params={'paginate': 'Raginate results or not',
+    @api.doc(params={'paginate': 'Paginate results or not',
                      'page': 'Page number',
                      'limit': 'Number of items per page',
                      'status': 'Fight status'})
@@ -242,7 +291,7 @@ class FightGroup(Resource):
                         f"Unknown status: {s}", "warning")
             real_status.append(FightStatus(s))
 
-        query = Fight.query.filter(
+        query = _fight_query().filter(
             (Fight.player1.has(group_id=group_id)) |
             (Fight.player2.has(group_id=group_id))
         ).order_by(Fight.id.desc())
@@ -267,7 +316,7 @@ class FightGroup(Resource):
         if paginate:
             query = query.paginate(page=page, per_page=limit, error_out=False)
 
-        return FightSchema().dump(query, many=True)
+        return schema_for(FightSchema, _x_fields()).dump(query, many=True)
 
 
 @fight_ns.route('/group/<int:group_id>/count')
@@ -314,12 +363,129 @@ class CountFightGroup(Resource):
         return query.count()
 
 
+@fight_ns.route("/group/<int:group_id>/archive")
+class FightGroupArchive(Resource):
+    @jwt_required()
+    @api.doc(params={
+        "agent_ids": ("Comma-separated list of agent IDs "
+                      "(default: all group agents)"),
+    })
+    def get(self, group_id):
+        identity = get_jwt_identity()
+        student = Student.query.get(identity["id"])
+        if not student:
+            return log_and_return(
+                    current_app.logger,
+                    "Student not found",
+                    "warning", 401)
+
+        if student.role != "admin" and student.group_id != group_id:
+            return log_and_return(
+                    current_app.logger,
+                    "Unauthorized access to this group archive",
+                    "warning", 403)
+
+        # 1. Resolve the agents to include
+        raw_agent_ids = request.args.get("agent_ids", "")
+        if raw_agent_ids:
+            try:
+                requested_ids = {
+                    int(value) for value in raw_agent_ids.split(",") if value
+                }
+            except ValueError:
+                return log_and_return(
+                    current_app.logger,
+                    "Invalid agent_ids",
+                    "warning", 400)
+
+            agent_ids = db.session.execute(
+                select(Agent.id).where(
+                    Agent.group_id == group_id,
+                    Agent.id.in_(requested_ids),
+                )
+            ).scalars().all()
+
+            if not agent_ids:
+                return log_and_return(
+                    current_app.logger,
+                    "No valid agent ID for this group",
+                    "warning", 400)
+        else:
+            agent_ids = db.session.execute(
+                select(Agent.id).where(Agent.group_id == group_id)
+            ).scalars().all()
+
+            if not agent_ids:
+                return log_and_return(
+                    current_app.logger,
+                    "No agents in this group",
+                    "warning", 400)
+
+        # 2. Fetch only fight IDs, not ORM objects
+        fight_ids = db.session.execute(
+            select(Fight.id)
+            .where(Fight.status == FightStatus.DONE)
+            .where(
+                or_(
+                    Fight.player1_id.in_(agent_ids),
+                    Fight.player2_id.in_(agent_ids),
+                )
+            )
+            .order_by(Fight.id)
+        ).scalars().all()
+
+        # 3. Build the ZIP in a spooled temporary file
+        archive = tempfile.SpooledTemporaryFile(
+            max_size=16 * 1024 * 1024,
+        )
+
+        with zipfile.ZipFile(
+                archive, "w", zipfile.ZIP_STORED, True) as zip_file:
+            manifest = {"group_id": group_id, "fights": [], "missing": []}
+
+            for fight_id in fight_ids:
+                record = _archive_record_path(fight_id)
+                if record is None:
+                    manifest["missing"].append(fight_id)
+                    current_app.logger.warning(
+                        "No record file for fight %s", fight_id)
+                    continue
+
+                entry_name, path, already_gzipped = record
+                arcname = f"fight_{fight_id}/{entry_name}"
+
+                if already_gzipped:
+                    # Raw copy, streamed from disk
+                    zip_file.write(path, arcname, zipfile.ZIP_STORED)
+                else:
+                    # Rare fallback: gzip the .json on the fly
+                    with open(path, "rb") as raw_file:
+                        compressed = gzip.compress(raw_file.read())
+                    zip_file.writestr(arcname, compressed, zipfile.ZIP_STORED)
+
+                manifest["fights"].append(fight_id)
+
+            zip_file.writestr(
+                "manifest.json",
+                json.dumps(manifest, indent=2),
+                compress_type=zipfile.ZIP_STORED,
+            )
+
+        archive.seek(0)
+
+        return send_file(
+            archive,
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name=f"fights_group_{group_id}.zip")
+
+
 @fight_ns.route('/<int:id>')
 class FightItem(Resource):
     @api.response(200, 'Success', [fight_model])
     def get(self, id):
-        fight = Fight.query.get_or_404(id)
-        return FightSchema().dump(fight)
+        fight = _fight_query().filter(Fight.id == id).first_or_404()
+        return schema_for(FightSchema, _x_fields()).dump(fight)
 
     @admin_required
     @fight_ns.expect(update_fight_model)

@@ -14,4 +14,5 @@
   "loadError": "Error while loading fights.",
   "noFightsFound": "No fights found with the current filters.",
   "downloadAllJson": "Download All Json"
+  "downloading": "Downloading"
 }

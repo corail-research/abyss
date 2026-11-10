@@ -246,7 +246,10 @@ const FightCard = memo(({ fightData, status, myAgents }) => {
                 <Text key={stat.key} fontSize="sm" color={textColor}>
                     {localize(stat.title)}:{' '}
                     <span style={{ fontWeight: 'bold' }}>
-                        {player.custom_stats?.filter((cs) => cs.name === stat.key).reduce((acc, curr) => acc + curr.value, 0) ?? 0}
+                        {fightData.custom_stats
+                            ?.filter((cs) => cs.agent_id === player.id
+                                && cs.name === stat.key)
+                            .reduce((acc, curr) => acc + curr.value, 0) ?? 0}
                     </span>
                 </Text>
             ))}

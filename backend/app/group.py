@@ -8,6 +8,7 @@ from backend.db import db
 
 from backend.models.schemas import GroupSchema
 from backend.models import Group, Fight
+from backend.app.fields import schema_for
 from backend.app.utils import log_and_return
 
 from backend.app.stats import (
@@ -32,29 +33,42 @@ class GroupCollection(Resource):
         try:
             data = request.get_json()
             if "name" not in data:
-                return log_and_return(current_app.logger,"Missing information", "warning", status_code=400)
-            
+                return log_and_return(
+                        current_app.logger,
+                        "Missing information",
+                        "warning", 400)
+
             if "id" in data and Group.query.filter_by(id=data['id']).first():
-                return log_and_return(current_app.logger,'Group number already exists', "warning", status_code=403)
-            
+                return log_and_return(
+                        current_app.logger,
+                        'Group number already exists',
+                        "warning", 403)
+
             new_group = Group(**data)
             db.session.add(new_group)
             db.session.commit()
-            log_and_return(current_app.logger,f'Group {new_group.name} created', status_code=201)
+            log_and_return(
+                    current_app.logger,
+                    f'Group {new_group.name} created',
+                    status_code=201)
             return GroupSchema().dump(new_group), 201
         except Exception as e:
-            return log_and_return(current_app.logger,f'Unexpected Error: {str(e)}', 'error', 500)
+            return log_and_return(
+                    current_app.logger,
+                    f'Unexpected Error: {str(e)}',
+                    'error', 500)
 
     @group_ns.marshal_list_with(group_with_stats_model)
-    @api.doc(params={'include_stats': 'Boolean indicating if we want to include stats or not'})
+    @api.doc(params={'include_stats': "'true' if we want to include stats"})
     def get(self):
         try:
             include_stats = request.args.get('include_stats', 'false')
             include_stats = True if include_stats == 'true' else False
 
             groups = Group.query.all()
-            groups_with_stats = []
+
             if include_stats:
+                groups_with_stats = []
                 for group in groups:
                     json_group = GroupSchema().dump(group)
                     stats = get_stats(group.id)
@@ -65,7 +79,7 @@ class GroupCollection(Resource):
                             for agent in json_group['agents']:
                                 if agent['id'] in stat:
                                     agent[key.rstrip('per_agent')] = stat[agent['id']]
-                    
+
                     uncounted_stats = get_stats_uncounted(group.id)
                     for key, stat in uncounted_stats.items():
                         for agent in json_group['agents']:
@@ -75,18 +89,25 @@ class GroupCollection(Resource):
                     groups_with_stats.append(json_group)
 
                 return groups_with_stats
-            else:
-                return GroupSchema().dump(groups, many=True)
-            
+
+            return schema_for(
+                    GroupSchema,
+                    request.headers.get("X-Fields")).dump(groups, many=True)
+
         except Exception as e:
             traceback.print_exc()
-            return log_and_return(current_app.logger,f'Unexpected Error: {str(e)}', 'error', 500)
+            return log_and_return(
+                    current_app.logger,
+                    f'Unexpected Error: {str(e)}',
+                    'error', 500)
+
 
 @group_ns.route('/agents_min_stats')
 class GroupMinStats(Resource):
     @group_ns.marshal_list_with(group_min_agents_stats_model)
     def get(self):
         return get_groups_min_stats()
+
 
 @group_ns.route('/agents_min_stats.json')
 class GroupMinStatsJson(Resource):
@@ -101,11 +122,13 @@ class GroupLEVD(Resource):
     def get(self):
         return get_groups_levd()
 
+
 @group_ns.route('/levd.json')
 class GroupLEVDJson(Resource):
     @group_ns.marshal_list_with(group_leagues_elo_victories_defeats_model)
     def get(self):
         return get_groups_levd()
+
 
 @group_ns.route('/palmares')
 class GroupPalmares(Resource):
@@ -113,37 +136,18 @@ class GroupPalmares(Resource):
     def get(self):
         return get_groups_palmares()
 
+
 @group_ns.route('/palmares.json')
 class GroupPalmaresJson(Resource):
     @group_ns.marshal_list_with(group_palmares_model)
     def get(self):
-        return get_groups_palmares()    
+        return get_groups_palmares()
 
-@group_ns.route('/loadCSV')
-class GroupLoadCSV(Resource):
-    @admin_required
-    def post(self):
-        try:
-            file = request.files['file']
-            new_groups = []
-            if file and file.filename.endswith('.csv'):
-                df = pd.read_csv(file, sep=',')
-                for _, row in df.iterrows():
-                    new_groups.append(Group(name=row['name']))
-                
-                db.session.add_all(new_groups)
-                db.session.commit()
-                log_and_return(current_app.logger,'Group CSV loaded', status_code=201)
-                return GroupSchema().dump(new_groups, many=True), 201
-            else:
-                return log_and_return(current_app.logger,'Attempt to upload a file with an invalid extension', 'warning', 403)
-        except Exception as e:
-            return log_and_return(current_app.logger,f'Unexpected Error: {str(e)}', 'error', 500)
-        
+
 @group_ns.route('/<int:id>')
 class GroupItem(Resource):
     @group_ns.marshal_with(group_with_stats_model)
-    @api.doc(params={'include_stats': 'Boolean indicating if we want to include stats ou not'})
+    @api.doc(params={'include_stats': "'true' if we want to include stats"})
     def get(self, id):
         group = Group.query.get_or_404(id)
         try:
@@ -160,19 +164,25 @@ class GroupItem(Resource):
                         for agent in group_json['agents']:
                             if agent['id'] in stat:
                                 agent[key.rstrip('per_agent')] = stat[agent['id']]
-                
+
                 uncounted_stats = get_stats_uncounted(group.id)
                 for key, stat in uncounted_stats.items():
                     for agent in group_json['agents']:
                         if agent['id'] in stat:
                             agent[key.rstrip('per_agent')] = stat[agent['id']]
-                
+
                 return group_json
-            else:
-                return GroupSchema().dump(group)
+
+            return schema_for(
+                    GroupSchema,
+                    request.headers.get("X-Fields")).dump(group)
+
         except Exception as e:
-            return log_and_return(current_app.logger,f'Unexpected Error: {str(e)}', 'error', 500)
-    
+            return log_and_return(
+                    current_app.logger,
+                    f'Unexpected Error: {str(e)}',
+                    'error', 500)
+
     @admin_required
     @group_ns.expect(update_group_model)
     @group_ns.marshal_with(group_model)
