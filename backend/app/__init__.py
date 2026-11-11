@@ -1,6 +1,7 @@
 import os
 import logging
 import uuid
+import re
 
 from datetime import timezone, timedelta, datetime
 from rlh import RedisPubSubLogHandler
@@ -18,6 +19,15 @@ from backend.runtime import new_redis_client
 
 migrate = Migrate()
 jwt = JWTManager()
+
+# REGEX on cachable GET endpoint
+CACHEABLE_GET = re.compile(
+    r"^/(?:api/)?(?:"
+    r"groups/(?:levd|palmares|agents_min_stats)(?:\.json)?"
+    r"|fights/(?:[a-z_]+/)?count(?:\.json)?"
+    r"|fights/[a-z_]+/\d+/\d+/index\.json"
+    r")$"
+)
 
 def create_app(freeze=False, freeze_dest=None):
     app = Flask(__name__)
@@ -83,6 +93,9 @@ def create_app(freeze=False, freeze_dest=None):
 
     @app.after_request
     def refresh_expiring_jwts(response):
+        # Do not need a refresh token on public endpoint
+        if request.method == "GET" and CACHEABLE_GET.match(request.path):
+            return response
         try:
             exp_timestamp = get_jwt()["exp"]
             now = datetime.now(timezone.utc)
@@ -93,6 +106,23 @@ def create_app(freeze=False, freeze_dest=None):
             return response
         except (RuntimeError, KeyError):
             return response
+
+    # Public cache headers for the aggregate endpoints
+    @app.after_request
+    def add_public_cache_headers(response):
+        if not (request.method == "GET"
+                and response.status_code == 200
+                and CACHEABLE_GET.match(request.path)):
+            return response
+
+        if request.headers.get("X-Fields"):
+            response.headers["Cache-Control"] = "private, no-store"
+            return response
+
+        # 30 s at the edge, 2 min of stale-while-revalidate.
+        response.headers["Cache-Control"] = (
+            "public, max-age=30, stale-while-revalidate=120")
+        return response
 
     from backend.models import (
             Student, Arena, Group, Agent, CustomStats, Fight, GroupStatus)  # noqa: F401
