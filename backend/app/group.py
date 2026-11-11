@@ -1,4 +1,3 @@
-import pandas as pd
 import traceback
 
 from flask import request, current_app
@@ -9,6 +8,7 @@ from backend.db import db
 from backend.models.schemas import GroupSchema
 from backend.models import Group, Fight
 from backend.app.fields import schema_for
+from backend.cache import invalidate_group_stats
 from backend.app.utils import log_and_return
 
 from backend.app.stats import (
@@ -47,6 +47,7 @@ class GroupCollection(Resource):
             new_group = Group(**data)
             db.session.add(new_group)
             db.session.commit()
+            invalidate_group_stats(current_app.config["REDIS"])
             log_and_return(
                     current_app.logger,
                     f'Group {new_group.name} created',
@@ -190,20 +191,26 @@ class GroupItem(Resource):
         group = Group.query.get_or_404(id)
         try:
             data = request.get_json()
-            
             group.name = data.get('name', group.name)
-            if len(group.league_history) == 0 :
+            if len(group.league_history) == 0:
                 if data.get('league') is not None:
                     group.league_history = [data.get('league')]
             else:
                 group.league_history = group.league_history[:-1] + [data.get('league', group.league_history[-1])]
 
             db.session.commit()
-            log_and_return(current_app.logger,f'Group {group.name} patched', status_code=200)
+            invalidate_group_stats(current_app.config["REDIS"])
+            log_and_return(
+                    current_app.logger,
+                    f'Group {group.name} patched',
+                    status_code=200)
             return GroupSchema().dump(group)
         except Exception as e:
-            return log_and_return(current_app.logger,f'Unexpected Error: {str(e)}', 'error', 500)
-    
+            return log_and_return(
+                    current_app.logger,
+                    f'Unexpected Error: {str(e)}',
+                    'error', 500)
+
     @admin_required
     def delete(self, id):
         group = Group.query.get_or_404(id)
@@ -214,6 +221,7 @@ class GroupItem(Resource):
                 return log_and_return(current_app.logger,'Attempt to delete a group involved in fights', 'warning', 403)
             db.session.delete(group)
             db.session.commit()
+            invalidate_group_stats(current_app.config["REDIS"])
             return log_and_return(current_app.logger,'Group deleted', status_code=204)
         except Exception as e:
             return log_and_return(current_app.logger,f'Unexpected Error: {str(e)}', 'error', 500)

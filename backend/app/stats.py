@@ -3,6 +3,8 @@ from flask import current_app
 from sqlalchemy import func, case, select, column, Integer, String
 
 from backend.db import db
+from backend.cache import (
+        LEVD_KEY, MIN_STATS_KEY, PALMARES_KEY, cache_get, cache_set)
 
 from backend.models import (
         Group, Fight, Agent, AgentStatus, FightStatus, CustomStats)
@@ -16,31 +18,69 @@ AGG_CASES = [(CustomStats.aggregation == 'sum', func.sum(CustomStats.value)),
 
 
 def get_groups_min_stats():
-    n_victories_per_agents = select(Agent.id, func.coalesce(func.count(Fight.id), 0).label("n_victories"))\
-        .outerjoin(Fight, (Fight.winner_id == Agent.id) & (Fight.status == FightStatus.DONE))\
+    """Cached wrapper around :func:`_get_groups_min_stats`."""
+    redis = current_app.config["REDIS"]
+    cached = cache_get(redis, MIN_STATS_KEY)
+    if cached is not None:
+        return cached
+
+    result = [dict(row) for row in _get_groups_min_stats()]
+    ttl = current_app.config.get("GROUPS_STATS_CACHE_TTL", 60)
+    if ttl > 0:
+        cache_set(redis, MIN_STATS_KEY, result, ttl)
+    return result
+
+
+def _get_groups_min_stats():
+    """Compute minimal statistics attached to all groups"""
+    n_victories_per_agents = select(
+            Agent.id,
+            func.coalesce(func.count(Fight.id), 0).label("n_victories"))\
+        .outerjoin(
+                Fight,
+                (Fight.winner_id == Agent.id) &
+                (Fight.status == FightStatus.DONE))\
         .group_by(Agent.id).subquery()
-    
-    n_defeats_per_agents = select(Agent.id, func.coalesce(func.count(Fight.id), 0).label("n_defeats"))\
-        .outerjoin(Fight, ((Fight.player1_id == Agent.id) | (Fight.player2_id == Agent.id)) 
-                            & (Fight.winner_id != Agent.id) 
-                            & (Fight.status == FightStatus.DONE))\
+
+    n_defeats_per_agents = select(
+            Agent.id,
+            func.coalesce(func.count(Fight.id), 0).label("n_defeats"))\
+        .outerjoin(
+                Fight,
+                ((Fight.player1_id == Agent.id) |
+                 (Fight.player2_id == Agent.id)) &
+                (Fight.winner_id != Agent.id) &
+                (Fight.status == FightStatus.DONE))\
         .group_by(Agent.id).subquery()
-    
-    n_scored_conceeded = select(Agent.id, 
-                func.coalesce(func.sum(case((Fight.player1_id == Agent.id, Fight.score_player1), else_=Fight.score_player2)),0).label("n_points_scored"),
-                func.coalesce(func.sum(case((Fight.player1_id == Agent.id, Fight.score_player2), else_=Fight.score_player1)),0).label("n_points_conceded"))\
-        .outerjoin(Fight, ((Fight.player1_id == Agent.id) | (Fight.player2_id == Agent.id)) & (Fight.status == FightStatus.DONE))\
+
+    n_scored_conceeded = select(
+            Agent.id,
+            func.coalesce(
+                func.sum(
+                    case(
+                        (Fight.player1_id == Agent.id, Fight.score_player1),
+                        else_=Fight.score_player2)), 0).label("n_points_scored"),
+            func.coalesce(func.sum(
+                case(
+                    (Fight.player1_id == Agent.id, Fight.score_player2),
+                    else_=Fight.score_player1)), 0).label("n_points_conceded"))\
+        .outerjoin(
+                Fight,
+                ((Fight.player1_id == Agent.id) |
+                 (Fight.player2_id == Agent.id)) &
+                (Fight.status == FightStatus.DONE))\
         .group_by(Agent.id).subquery()
-    
+
     agents_stats = select(Agent.id, Agent.name, Agent.elo, Agent.group_id,
                           column("n_victories").label("n_v"),
                           column("n_defeats").label("n_d"),
                           column("n_points_scored").label("n_s"),
                           column("n_points_conceded").label("n_c"))\
-                .join(n_victories_per_agents, n_victories_per_agents.c.id == Agent.id)\
-                .join(n_defeats_per_agents, n_defeats_per_agents.c.id == Agent.id)\
-                .join(n_scored_conceeded, n_scored_conceeded.c.id == Agent.id).subquery()
-    
+        .join(n_victories_per_agents, n_victories_per_agents.c.id == Agent.id)\
+        .join(n_defeats_per_agents, n_defeats_per_agents.c.id == Agent.id)\
+        .join(n_scored_conceeded,
+              n_scored_conceeded.c.id == Agent.id).subquery()
+
     groups_min_stats = select(Group.id, Group.name,
                               func.array_agg(
                                     func.jsonb_build_object(
@@ -55,58 +95,100 @@ def get_groups_min_stats():
         .join(agents_stats, agents_stats.c.group_id == Group.id)\
         .group_by(Group.id)\
         .order_by(Group.id)
-    
+
     results = db.session.execute(groups_min_stats).mappings().all()
 
     return results
 
+
 def get_groups_levd():
+    """Cached wrapper around :func:`_get_groups_levd`."""
+    redis = current_app.config["REDIS"]
+    cached = cache_get(redis, LEVD_KEY)
+    if cached is not None:
+        return cached
+
+    result = [dict(row) for row in _get_groups_levd()]
+    ttl = current_app.config.get("GROUPS_STATS_CACHE_TTL", 60)
+    if ttl > 0:
+        cache_set(redis, LEVD_KEY, result, ttl)
+    return result
+
+
+def _get_groups_levd():
     agent_types = [AgentStatus.ACTIVE, AgentStatus.INACTIVE]
-    
-    n_victories_per_agents = select(Agent.id, 
-                                    func.coalesce(func.count(Fight.id), 0).label("n_victories_agents"))\
-        .outerjoin(Fight, (Fight.winner_id == Agent.id) & (Fight.status == FightStatus.DONE))\
+
+    n_victories_per_agents = select(
+            Agent.id,
+            func.coalesce(
+                func.count(Fight.id), 0).label("n_victories_agents"))\
+        .outerjoin(
+                Fight,
+                (Fight.winner_id == Agent.id) &
+                (Fight.status == FightStatus.DONE))\
         .where(Agent.status.in_(agent_types))\
         .group_by(Agent.id).subquery()
-    
-    n_defeats_per_agents = select(Agent.id, 
-                                  func.coalesce(func.count(Fight.id), 0).label("n_defeats_agents"))\
-        .outerjoin(Fight, ((Fight.player1_id == Agent.id) | (Fight.player2_id == Agent.id)) 
-                            & (Fight.winner_id != Agent.id) 
-                            & (Fight.status == FightStatus.DONE))\
+
+    n_defeats_per_agents = select(
+            Agent.id,
+            func.coalesce(func.count(Fight.id), 0).label("n_defeats_agents"))\
+        .outerjoin(
+            Fight,
+            ((Fight.player1_id == Agent.id) |
+             (Fight.player2_id == Agent.id)) &
+            (Fight.winner_id != Agent.id) &
+            (Fight.status == FightStatus.DONE))\
         .where(Agent.status.in_(agent_types))\
         .group_by(Agent.id).subquery()
-    
-    agents_stats = select(Agent.id, Agent.name, 
-                          Agent.status, Agent.elo, Agent.group_id,
-                          column("n_victories_agents").label("n_v"),
-                          column("n_defeats_agents").label("n_d"))\
-                .join(n_victories_per_agents, n_victories_per_agents.c.id == Agent.id)\
-                .join(n_defeats_per_agents, n_defeats_per_agents.c.id == Agent.id)
-    
-    group_stats = select(Group.id, Group.name, 
-                        Group.league_history["current_league"].label("league"),
-                        Group.league_history["previous_league"].label("previous_league"),
-                        func.sum(column("n_v")).label("n_victories"),
-                        func.sum(column("n_d")).label("n_defeats"),
-                        func.coalesce(func.max(agents_stats.c.elo), 0).label("elo"),
-                        func.array_agg(
-                            func.jsonb_build_object(
-                                "name", agents_stats.c.name,
-                                "status", func.lower(func.cast(agents_stats.c.status, String)),
-                                "elo", agents_stats.c.elo,
-                                "n_victories", column("n_v"),
-                                "n_defeats", column("n_d")
-                            )
-                        ).label("agents"))\
-                .select_from(agents_stats)\
-                .join(Group, agents_stats.c.group_id == Group.id)\
-                .group_by(Group.id)
+
+    agents_stats = select(
+            Agent.id, Agent.name,
+            Agent.status, Agent.elo, Agent.group_id,
+            column("n_victories_agents").label("n_v"),
+            column("n_defeats_agents").label("n_d"))\
+        .join(n_victories_per_agents, n_victories_per_agents.c.id == Agent.id)\
+        .join(n_defeats_per_agents, n_defeats_per_agents.c.id == Agent.id)
+
+    group_stats = select(
+            Group.id, Group.name,
+            Group.league_history["current_league"].label("league"),
+            Group.league_history["previous_league"].label("previous_league"),
+            func.sum(column("n_v")).label("n_victories"),
+            func.sum(column("n_d")).label("n_defeats"),
+            func.coalesce(func.max(agents_stats.c.elo), 0).label("elo"),
+            func.array_agg(
+                func.jsonb_build_object(
+                    "name", agents_stats.c.name,
+                    "status", func.lower(
+                        func.cast(agents_stats.c.status, String)),
+                    "elo", agents_stats.c.elo,
+                    "n_victories", column("n_v"),
+                    "n_defeats", column("n_d")
+                )
+            ).label("agents"))\
+        .select_from(agents_stats)\
+        .join(Group, agents_stats.c.group_id == Group.id)\
+        .group_by(Group.id)
 
     return db.session.execute(group_stats).mappings().all()
 
 
 def get_groups_palmares():
+    """Cached wrapper around :func:`_get_groups_palmares`."""
+    redis = current_app.config["REDIS"]
+    cached = cache_get(redis, PALMARES_KEY)
+    if cached is not None:
+        return cached
+
+    # .all() returns Row objects here (no .mappings()), hence _mapping.
+    result = [dict(row._mapping) for row in _get_groups_palmares()]
+    ttl = current_app.config.get("GROUPS_STATS_CACHE_TTL", 60)
+    if ttl > 0:
+        cache_set(redis, PALMARES_KEY, result, ttl)
+    return result
+
+
+def _get_groups_palmares():
     agent_types = [AgentStatus.ACTIVE, AgentStatus.INACTIVE]
 
     # Win count by agents

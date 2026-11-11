@@ -23,6 +23,7 @@ from backend.utils.fight_env import (
         compress_play_env_files)
 from backend.utils.matchmaking import compute_matches, calculate_elo_update
 from backend.utils.leagues import update_league_standings
+from backend.cache import invalidate_group_stats
 from backend.runtime import (
         new_redis_client, set_arena_enabled, wait_arena_enabled)
 
@@ -498,6 +499,8 @@ def run_arena(redis_conn: redis.StrictRedis):
             events.close()
 
             update_league_standings(db_session, LEAGUES)
+            invalidate_group_stats(redis_conn)
+
             arena_logger.info("Leagues updated")
             arena_logger.info("END EPOCH")
             first_epoch = False

@@ -92,6 +92,9 @@ class Config:
     FIGHTS_FOLDER = os.path.join(BASE_DIR, 'playground')
     RESET_ARENA_ON_START = os.environ.get("RESET_ARENA_ON_START", "1") == "1"
 
+    GROUPS_STATS_CACHE_TTL = int(
+            os.environ.get("GROUPS_STATS_CACHE_TTL", 60))
+
     ALLOWED_EXTENSIONS = {'zip'}
     ALLOWED_MIME = {'application/zip', 'x-zip-compressed'}
     MAX_CONTENT_LENGTH = 100 * 1024 * 1024
