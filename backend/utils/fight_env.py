@@ -136,7 +136,6 @@ def compress_play_env_files(rundir):
 def get_record(rundir, agent1, agent2, logger: logging.Logger) -> list[dict]:
     env_dir = f"./{rundir}"
     pattern_rec = r"^__REC__([0-9]+)\.json$"
-    pattern_log_line = r"^([0-9a-zA-Z\- \.:|_]+) Player now playing : "
     error_line = ""
 
     message = ("The agent is probably using too much memory, "
@@ -198,13 +197,14 @@ def get_record(rundir, agent1, agent2, logger: logging.Logger) -> list[dict]:
 
     # Get last all error lines
     for line in log_lines:
-        if re.match(pattern_log_line, line):
+        if "Player now playing" in line:
             match = re.search(r"agent_([0-9]+)", line)
             if match is not None:
                 keep_line = match.group()
+
         if "Error:" in line:
             error_lines.append(line)
-        if "ERROR" in line:
+        elif "ERROR" in line:
             tmp = line.split(' - ')[-1].split("for player")[0]
             if tmp != "":
                 error_lines.append(tmp)
