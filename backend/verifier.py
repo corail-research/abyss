@@ -74,8 +74,8 @@ def run_verifier(redis_conn: redis.StrictRedis):
             # Check if agent was not deleted at the time
             agent = db_session.query(Agent).filter_by(id=int(agent_id)).first()
             if agent is None:
-                verifier_logger.info(f"Agent {agent.name} ({agent_id}) "
-                                     "not found, skipping")
+                verifier_logger.info(
+                        f"Agent {agent_id} not found, skipping")
                 continue
 
             if agent.status != AgentStatus.PENDING:
@@ -150,6 +150,11 @@ def run_verifier(redis_conn: redis.StrictRedis):
 
             except FileNotFoundError as e:
                 verifier_logger.error("Exception: %s", str(e))
+            except Exception as e:
+                db_session.rollback()
+                verifier_logger.error(
+                    "Unexpected error while verifying agent %s: %s",
+                    agent_id, e, exc_info=True)
 
             verifier_logger.info("Waiting for another agent to verify...")
 

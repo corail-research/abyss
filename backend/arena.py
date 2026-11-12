@@ -19,7 +19,7 @@ from backend.models import Fight, Agent, Arena, CustomStats
 from backend.models.enums import FightStatus, AgentStatus
 from backend.utils.fight_env import (
         create_env, post_play_env, get_record,
-        change_agent_name_in_json, BrokenMatch,
+        change_agent_name_in_json, BrokenMatch, GameError,
         compress_play_env_files)
 from backend.utils.matchmaking import compute_matches, calculate_elo_update
 from backend.utils.leagues import update_league_standings
@@ -39,21 +39,29 @@ def event_listener(events, matchs_info: dict[int, dict],
                    logger: logging.Logger):
     counter = 0
     for event in events:
-        print(event)
-        name = event['Actor']['Attributes']['name']
+        name = event.get('Actor', {})\
+                .get('Attributes', {})\
+                .get('name', '')
 
-        if name.startswith("fight"):
-            if event['Action'] == 'destroy':
-                logger.info(str(name)+" finished")
-                matchs_info[name]["event"].set()
-                event_counter.set()
-                counter -= 1
-            elif event['Action'] == 'create':
-                if counter >= max_matchs-1:
-                    event_counter.clear()
-                logger.info(str(name)+" in play")
-                counter += 1
-            logger.info(f"MATCH COUNTER: {counter}")
+        # ignore unknown match
+        if not name.startswith("fight"):
+            continue
+        info = matchs_info.get(name)
+        if info is None or "event" not in info:
+            logger.warning("Ignoring event for unknown match %s", name)
+            continue
+
+        if event.get('Action') == 'destroy':
+            logger.info(str(name) + " finished")
+            info["event"].set()
+            event_counter.set()
+            counter -= 1
+        elif event.get('Action') == 'create':
+            if counter >= max_matchs - 1:
+                event_counter.clear()
+            logger.info(str(name) + " in play")
+            counter += 1
+        logger.info(f"MATCH COUNTER: {counter}")
 
 
 def update_match(key: str, matchs_info: dict, event_match: Event):
@@ -140,7 +148,24 @@ def update_elo_for_fight(fight: Fight, db_session, logger: logging.Logger):
         player2.peak_elo = player2.elo
     db_session.commit()
     logger.info(
-        f"Updated ELO: {player1.name} {player1.elo}, {player2.name} {player2.elo}")
+        f"Updated ELO: {player1.name} {player1.elo}, "
+        f"{player2.name} {player2.elo}")
+
+
+def cancel_fight(db_session, fight_id, logger, reason):
+    # Cancel a fight without blaming an agent.
+    # A fight already marked DONE is never downgraded.
+    if fight_id is None:
+        return
+    try:
+        fight = db_session.query(Fight).filter_by(id=fight_id).first()
+        if fight is not None and fight.status != FightStatus.DONE:
+            fight.status = FightStatus.CANCELLED
+            db_session.commit()
+            logger.warning("Fight %s cancelled: %s", fight_id, reason)
+    except Exception:
+        db_session.rollback()
+        logger.exception("Cannot cancel fight %s", fight_id)
 
 
 def run_arena(redis_conn: redis.StrictRedis):
@@ -314,9 +339,9 @@ def run_arena(redis_conn: redis.StrictRedis):
                         try:
                             # Clean game env
 
-                            arena_logger.info(f"{keys[i]} finished: post play env...")
+                            arena_logger.info(
+                                    f"{keys[i]} finished: post play env...")
                             post_play_env(str(keys[i]))
-
 
                             # Retrieve winner and scores
                             arena_logger.info(f"{keys[i]}: retrieve JSON...")
@@ -374,13 +399,24 @@ def run_arena(redis_conn: redis.StrictRedis):
                             db_session.add_all(custom_stats)
                             db_session.commit()
 
-                            arena_logger.info(f"{keys[i]} custom stats created")
+                            arena_logger.info(
+                                    f"{keys[i]} custom stats created")
 
-                            agent1_name = f"{fight.player1.group.name} #{fight.player1.name}"
-                            agent2_name = f"{fight.player2.group.name} #{fight.player2.name}"
-                            arena_logger.info(f"{keys[i]} - {agent1_name} VS {agent2_name}")
+                            agent1_name = (f"{fight.player1.group.name}"
+                                           f" #{fight.player1.name}")
+                            agent2_name = (f"{fight.player2.group.name}"
+                                           f" #{fight.player2.name}")
+                            arena_logger.info(
+                                    f"{keys[i]} - "
+                                    f"{agent1_name} VS {agent2_name}")
 
-                            change_agent_name_in_json(keys[i], agent1_name, agent2_name)
+                            try:
+                                change_agent_name_in_json(
+                                        keys[i], agent1_name, agent2_name)
+                            except Exception:
+                                arena_logger.exception(
+                                    "Cannot rewrite agent names for %s",
+                                    keys[i])
 
                             if fight.player1_id == winner_id:
                                 winner_name = agent1_name
@@ -392,10 +428,20 @@ def run_arena(redis_conn: redis.StrictRedis):
                             )
 
                             # update agents ELO
-                            update_elo_for_fight(fight, db_session, arena_logger)
+                            try:
+                                update_elo_for_fight(
+                                        fight, db_session, arena_logger)
+                            except Exception:
+                                db_session.rollback()
+                                arena_logger.exception(
+                                    "Cannot update ELO for %s", keys[i])
 
-                            # compress env files
-                            compress_play_env_files(str(keys[i]))
+                            # compress (best-effort) env files
+                            try:
+                                compress_play_env_files(str(keys[i]))
+                            except Exception:
+                                arena_logger.exception(
+                                    "Cannot compress files for %s", keys[i])
 
                         # If the match did not end normally, cancel it
                         # and place both agents in quarantine
@@ -450,7 +496,32 @@ def run_arena(redis_conn: redis.StrictRedis):
                                             f"Agent {pid} placed in quarantine")
                                 db_session.commit()
 
-                        used_ports[matchs_info[keys[i]]["port"]] = None 
+                        except GameError as e:
+                            # Cancel the fight and
+                            # do not invalidate or quarantine any agent.
+                            db_session.rollback()
+                            arena_logger.error(
+                                "%s: game error: %s", keys[i], e,
+                                exc_info=True)
+                            cancel_fight(
+                                db_session,
+                                matchs_info[keys[i]].get("fight"),
+                                arena_logger,
+                                f"game error: {e}")
+
+                        except Exception as e:
+                            # Arena must survive any record/log/game anomaly.
+                            db_session.rollback()
+                            arena_logger.error(
+                                "%s: unexpected error: %s", keys[i], e,
+                                exc_info=True)
+                            cancel_fight(
+                                db_session,
+                                matchs_info[keys[i]].get("fight"),
+                                arena_logger,
+                                f"unexpected error: {e}")
+
+                        used_ports[matchs_info[keys[i]]["port"]] = None
                         used_cpus[matchs_info[keys[i]]["cpu"]] = None
                         matchs_info.pop(keys.pop(i))
 
@@ -508,10 +579,11 @@ def run_arena(redis_conn: redis.StrictRedis):
     except Exception as e:
         arena_logger.error("Exception: %s", str(e))
         if matchs_info is not None:
-            for key in matchs_info.keys():
-                if matchs_info[key]["container"] is not None:
+            for key, info in matchs_info.items():
+                container = info.get("container")
+                if container is not None:
                     try:
-                        matchs_info[key]["container"].kill()
+                        container.kill()
                     except Exception:
                         pass
         try:
