@@ -16,6 +16,42 @@ class BrokenMatch(Exception):
         super().__init__(self.message)
 
 
+class GameError(Exception):
+    """Error caused by the game bundle or by an unreadable record.
+
+    Unlike :class:`BrokenMatch`, this error must never blame or invalidate an
+    agent.  The arena cancels the fight and keeps running.
+    """
+
+    def __init__(self, message="Game error"):
+        self.message = message
+        super().__init__(self.message)
+
+
+# VARCHAR(5000) limit, otherwise the commit itself would fail.
+MAX_ERROR_MESSAGE_LENGTH = 4000
+MAX_ERROR_LINE_LENGTH = 1000
+
+
+def _aggregate_errors(lines: list[str]) -> str:
+    """Normalize, deduplicate and cap error lines for refusal messages."""
+    # preserve first-seen order while dropping exact duplicates.
+    seen = set()
+    cleaned = []
+    for line in lines:
+        text = " ".join(line.split())
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        cleaned.append(text[:MAX_ERROR_LINE_LENGTH])
+
+    message = "\n".join(cleaned)
+    if len(message) > MAX_ERROR_MESSAGE_LENGTH:
+        message = message[:MAX_ERROR_MESSAGE_LENGTH].rstrip()
+        message += "\n... (truncated)"
+    return message
+
+
 # TODO: rework with list of (agent, group) for game with more than 2 player
 def create_env(rundir, group1, agent1, group2=None, agent2=None):
     # Specify the source and destination directories
@@ -100,55 +136,123 @@ def compress_play_env_files(rundir):
 def get_record(rundir, agent1, agent2, logger: logging.Logger) -> list[dict]:
     env_dir = f"./{rundir}"
     pattern_rec = r"^__REC__([0-9]+)\.json$"
-    pattern_log_line = r"^([0-9a-zA-Z\- \.:|_]+) Player now playing : "
     error_line = ""
 
-    ended_with_error = False
-    message = "The agent is probably using too much memory, or the record is incomplete."
+    message = ("The agent is probably using too much memory, "
+               "or the record is incomplete.")
     confidence = False
-    for file in os.listdir(env_dir):
-        if re.match(pattern_rec, file):
-            with open(env_dir + "/" + file) as f:
+
+    # Isolate platform errors
+    try:
+        files = os.listdir(env_dir)
+    except OSError as exc:
+        raise GameError(
+            f"Cannot list match directory {env_dir}: {exc}") from exc
+
+    for file in files:
+        if not re.match(pattern_rec, file):
+            continue
+        try:
+            with open(env_dir + "/" + file, encoding="utf-8") as f:
                 data = json.load(f)
-                if (data.get("final_summary") is None
-                        or data.get("final_summary").get("status") == "cancelled"):
-                    logger.error("Error with " + str(rundir))
-                    ended_with_error = True
-                else:
-                    return data
-    else:
-        ended_with_error = True
+        except (OSError, ValueError) as exc:
+            # Expose reading errors
+            raise GameError(
+                f"Cannot read match record {file}: {exc}") from exc
 
-    if ended_with_error:
-        with open(env_dir + f"/agent_{agent1}-agent_{agent2}.log") as f:
-            for line in f.readlines():
-                if re.match(pattern_log_line, line):
-                    m = re.search(r"agent_([0-9]+)", line)
-                    keep_line = m.group()
-                if "Error:" in line:
-                    print("ERROR Line : ", line)
-                    error_line = line
+        if not isinstance(data, dict):
+            # Expose invalid records
+            raise GameError(
+                f"Invalid match record {file}: expected a JSON object")
 
-                if "ERROR" in line:
-                    print("ERROR LINE : ", line)
-                    tmp = line.split(' - ')[-1].split("for player")[0]
-                    if tmp != "":
-                        error_line = tmp
+        final_summary = data.get("final_summary")
+        if final_summary is None:
+            logger.error("Error with " + str(rundir))
+            continue
+        if not isinstance(final_summary, dict):
+            # Expose invalid summary
+            raise GameError(
+                f"Invalid final_summary in {file}: "
+                f"{type(final_summary).__name__}")
+        if final_summary.get("status") == "cancelled":
+            logger.error("Error with " + str(rundir))
+            continue
 
-        index = keep_line.find("_")
-        if error_line != "":
-            message = "The agent caused the following error: "+error_line
-            confidence = True
-        elif os.path.exists(env_dir + f"/timeout_agent_{agent1}-agent_{agent2}.log"):
-            with open(env_dir + f"/timeout_agent_{agent1}-agent_{agent2}.log") as f:
-                code = int(f.read())
-                if code >= 124:  # error code from timeout command
-                    message = "The agent used up its own time credit and the match's time credit"
-                    confidence = True
+        # Return summary
+        return data
 
-        id_error = int(keep_line[index+1:])
+    log_path = env_dir + f"/agent_{agent1}-agent_{agent2}.log"
+    keep_line = None
+    error_lines = []
+
+    try:
+        with open(log_path, encoding="utf-8", errors="replace") as f:
+            log_lines = f.readlines()
+    except OSError as exc:
+        # Logging reading errors
+        logger.error("Cannot read match log %s: %s", log_path, exc)
+        log_lines = []
+        message = (f"Match log unavailable ({exc}); "
+                   "the responsible agent could not be identified.")
+
+    # Get last all error lines
+    for line in log_lines:
+        if "Player now playing" in line:
+            match = re.search(r"agent_([0-9]+)", line)
+            if match is not None:
+                keep_line = match.group()
+
+        if "Error:" in line:
+            error_lines.append(line)
+        elif "ERROR" in line:
+            tmp = line.split(' - ')[-1].split("for player")[0]
+            if tmp != "":
+                error_lines.append(tmp)
+
+    # timeout is one more error line, not an alternative.
+    timeout_path = env_dir + f"/timeout_agent_{agent1}-agent_{agent2}.log"
+    if os.path.exists(timeout_path):
+        try:
+            with open(timeout_path, encoding="utf-8") as f:
+                code = int(f.read().strip() or 0)
+        except (OSError, ValueError):
+            code = 0
+        if code >= 124:
+            error_lines.append(
+                "The agent used up its own time credit "
+                "and the match's time credit")
+
+    aggregated = _aggregate_errors(error_lines)  # CHANGED
+
+    if keep_line is None:
+        if aggregated:
+            message = ("The match ended with an error but the responsible "
+                       f"agent could not be identified:\n{aggregated}")
         raise BrokenMatch(
-                message=message, agent_id=int(id_error), confidence=confidence)
+            message=f"{message} (fight {rundir})",
+            agent_id=None,
+            confidence=False)
+
+    index = keep_line.find("_")
+    try:
+        id_error = int(keep_line[index + 1:])
+    except (TypeError, ValueError):
+        id_error = None
+
+    if aggregated:
+        # Include every error line in the refusal message.
+        if id_error is not None:
+            message = ("The agent caused the following error(s):\n"
+                       f"{aggregated}")
+        else:
+            message = ("The match ended with the following error(s):\n"
+                       f"{aggregated}")
+        confidence = id_error is not None
+
+    raise BrokenMatch(
+        message=f"{message} (fight {rundir})",
+        agent_id=id_error,
+        confidence=confidence)
 
 
 def get_error_verify_log(rundir, agent1) -> tuple[bool, str]:
