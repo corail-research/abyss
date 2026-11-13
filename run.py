@@ -121,6 +121,9 @@ if __name__ == '__main__':
         run_flask_cmd("db-setup", timeout=db_setup_timeout)
         run_flask_cmd("seed", timeout=120)
 
+        # fail fast if the game bundle is missing or invalid.
+        run_flask_cmd("check-game", "--path", "game", timeout=60)
+
         # 3. Autonomous services
         processes = {
             "flask": Process(

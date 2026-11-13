@@ -34,6 +34,32 @@ All `gui.entry`, `rules.*` and `stats[].palmares_image` paths are relative to
 `game/gui/`. The backend serves `/game/gui/<path>` only: `main.py`,
 `requirements.txt` and the rest of the bundle are never exposed.
 
+## Read-only runtime contract
+
+- `game/` is mounted read-only at `/game`.
+- The match directory is writable at `/run`.
+- The launcher runs with `cwd=/run` and `PYTHONPATH=/game:/run`.
+- Resolve game assets from `Path(__file__).parent`, not from the current
+  directory.
+- Write temporary files under `/run` or `/tmp`; `/game` is not writable.
+- `game/requirements.txt` is installed before the agent requirements.
+  Agent requirements cannot override game or platform package versions.
+
+## Import contract
+
+The launcher runs as `python /game/main.py` with `cwd=/run` and
+`PYTHONPATH=/game:/run`.
+
+- Game modules are importable by their top-level name (`import board`).
+- Agent modules are importable as `agent_<id>` (`import agent_1`).
+- Agents may import game modules because `/game` is on `sys.path`.
+- Use absolute imports in `main.py`; relative imports require a package
+  entrypoint, which the current runner does not use.
+- Resolve game data files from `Path(__file__).parent`, never from the current
+  directory.
+- Name agent helper modules uniquely; `/game` precedes `/run`, so a game
+  module wins on a name collision.
+
 ## Manifest, commented
 
 `game.json` must be **strict JSON**: no comments, no trailing commas. The
@@ -135,7 +161,7 @@ version below is annotated for documentation only.
 - `additionalProperties: false`, so unknown fields are rejected;
 - `manifest_version: 1`;
 - `id` and `stats[].key` patterns;
-- `players >= 2`, positive timeouts;
+- `players >= 2`, required positive `timeout_match` / `timeout_verify`;
 - `type` and `aggregation` enumerations;
 - localized objects `{fr, en}` via `$defs`/`$ref`.
 

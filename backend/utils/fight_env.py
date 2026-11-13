@@ -60,7 +60,7 @@ def create_env(rundir, group1, agent1, group2=None, agent2=None):
     requirements = []
 
     source_dirs = [
-            "../game", f'../student_agents/group_{group1}/agent_{agent1}/']
+            f'../student_agents/group_{group1}/agent_{agent1}/']
     if group2 is not None and agent2 is not None:
         source_dirs.append(
                 f'../student_agents/group_{group2}/agent_{agent2}/')
@@ -92,8 +92,6 @@ def create_env(rundir, group1, agent1, group2=None, agent2=None):
     requirements = list(set([r.split("==")[0] for r in requirements if r]))
     if 'pympler' in requirements:
         requirements.remove('pympler')
-    if 'colorama' in requirements:
-        requirements.remove('colorama')
     if 'seahorse' in requirements:
         requirements.remove('seahorse')
     if 'json' in requirements:

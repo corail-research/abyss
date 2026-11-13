@@ -26,8 +26,6 @@ SCHEMA_PATH = Path(__file__).with_name("manifest.schema.json")
 # --- Defaults applied when the manifest omits optional fields -------------
 
 DEFAULT_AGENT_ENTRY = "my_player.py"
-DEFAULT_TIMEOUT_MATCH = 2000
-DEFAULT_TIMEOUT_VERIFY = 1000
 DEFAULT_ARGS_MATCH = (
         "-p", "{port}", "-f", "{log}", "-t", "local", "{players}")
 DEFAULT_ARGS_VERIFY = (
@@ -123,6 +121,11 @@ def _check_args(args: tuple[str, ...], kind: str, required: set[str],
             if name not in _ALLOWED_PLACEHOLDERS:
                 errors.append(
                     f"launcher.args_{kind}: unknown placeholder {{{name}}}")
+            if name in {"players", "player"} and arg != f"{{{name}}}":
+                # {players}/{player} must be standalone
+                errors.append(
+                    f"launcher.args_{kind}: {{{name}}} must be a standalone "
+                    "argument")
             found.add(name)
 
     # {player} only makes sense in verify mode, {players} in match mode.
@@ -302,8 +305,8 @@ def load_manifest(game_dir: str | Path) -> GameManifest:
             "entry", DEFAULT_AGENT_ENTRY),
         requirements=requirements,
         launcher_entry=launcher_entry,
-        timeout_match=launcher.get("timeout_match", DEFAULT_TIMEOUT_MATCH),
-        timeout_verify=launcher.get("timeout_verify", DEFAULT_TIMEOUT_VERIFY),
+        timeout_match=launcher["timeout_match"],
+        timeout_verify=launcher["timeout_verify"],
         args_match=args_match,
         args_verify=args_verify,
         gui_entry=gui_entry,

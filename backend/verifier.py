@@ -1,11 +1,10 @@
 import logging.handlers
 import os
 import redis
-import shutil
 import docker.types
 import docker
 import logging
-import filecmp
+import json
 
 from dotenv import load_dotenv
 from rlh import RedisPubSubLogHandler
@@ -20,6 +19,7 @@ from backend.utils.fight_env import (
         create_env, post_play_env,
         get_error_verify_log, compress_play_env_files)
 from backend.runtime import new_redis_client
+
 
 def run_verifier(redis_conn: redis.StrictRedis):
     verifier_logger = logging.getLogger("arena_logger")
@@ -91,14 +91,27 @@ def run_verifier(redis_conn: redis.StrictRedis):
                 verify_dir = f"agent_{agent.id}"
                 create_env(verify_dir, agent.group.id, agent.id)
 
+                run_dir = os.path.abspath(verify_dir)
+                players = [f"agent_{agent.id}"]
+
                 container = client.containers.run(
                         'abyss-playground:latest',
                         user=f"{os.getuid()}:{os.getgid()}",
-                        volumes=[
-                            os.getcwd()+":"+os.getcwd(),
-                            "/etc/passwd:/etc/passwd:ro",
-                            "/etc/group:/etc/group:ro"],
-                        working_dir=os.getcwd(),
+                        # CHANGED: read-only game and runner.
+                        volumes={
+                            Config.GAME_DIR: {
+                                "bind": "/game", "mode": "ro"},
+                            run_dir: {
+                                "bind": "/run", "mode": "rw"},
+                            Config.RUNNER_PATH: {
+                                "bind": "/opt/abyss/runner.py", "mode": "ro"},
+                            "/etc/passwd": {
+                                "bind": "/etc/passwd", "mode": "ro"},
+                            "/etc/group": {
+                                "bind": "/etc/group", "mode": "ro"},
+                        },
+                        working_dir="/run",
+                        command=["python", "/opt/abyss/runner.py"],
                         mem_limit="5g",
                         network="bridge",
                         cpu_count=1,
@@ -106,10 +119,12 @@ def run_verifier(redis_conn: redis.StrictRedis):
                         detach=True,
                         name="verify",
                         environment=[
-                            f"RUNDIR={verify_dir}",
-                            f"PLAYER_1=agent_{agent.id}",
+                            "RUN_DIR=/run",
+                            "GAME_DIR=/game",
+                            "MODE=verify",
                             f"PORT={VERIFIER_PORT}",
-                            "TYPE=verify",
+                            f"PLAYERS_JSON={json.dumps(players)}",
+                            f"PLAYER_1={players[0]}",
                             f"CUID={str(os.getuid())}",
                             f"GUID={str(os.getgid())}"])
 
@@ -168,18 +183,11 @@ def run_verifier(redis_conn: redis.StrictRedis):
 
 def launch_verifier(base_dir):
     # Move to root dir
-    # sys.stdout = open(str(os.getpid()) + ".out", "w")
     load_dotenv(f"{base_dir}/.env")
     os.chdir(base_dir)
 
     # Create arena playground
-    if not os.path.exists("./verifyground"):
-        os.mkdir("./verifyground")
-    if (not os.path.exists("./verifyground/entrypoint.sh") or
-            not filecmp.cmp("./playground/entrypoint.sh",
-                            "./verifyground/entrypoint.sh",
-                            False)):
-        shutil.copy("./docker/entrypoint.sh", "./verifyground/")
+    os.mkdir("./verifyground", exist_ok=True)
     os.chdir("./verifyground")
 
     redis_conn = new_redis_client(Config.REDIS_URL)

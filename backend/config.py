@@ -88,9 +88,12 @@ class Config:
     MAX_PARALLEL_MATCH_STARTUP = int(
             os.environ.get("DEFAULT_MAX_PARALLEL_MATCH", 1))
     ARENA_STATE_STARTUP = int(os.environ.get("DEFAULT_ARENA_STATE", 0))
+    RESET_ARENA_ON_START = os.environ.get("RESET_ARENA_ON_START", "1") == "1"
+
     UPLOAD_FOLDER = os.path.join(BASE_DIR, 'student_agents')
     FIGHTS_FOLDER = os.path.join(BASE_DIR, 'playground')
-    RESET_ARENA_ON_START = os.environ.get("RESET_ARENA_ON_START", "1") == "1"
+    GAME_DIR = os.path.join(BASE_DIR, 'game')
+    RUNNER_PATH = os.path.join(BASE_DIR, 'backend', 'runner.py')
 
     GROUPS_STATS_CACHE_TTL = int(
             os.environ.get("GROUPS_STATS_CACHE_TTL", 60))

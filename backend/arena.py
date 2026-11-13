@@ -5,7 +5,7 @@ import shutil
 import docker.types
 import docker
 import logging
-import filecmp
+import json
 
 from datetime import datetime, timedelta, timezone
 from threading import Event, Thread
@@ -93,17 +93,34 @@ def play_match(client: docker.DockerClient, port: int,
     else:
         add_match(key, fight, matchs_info, port, cpu, event_match)
 
-    create_env(key, matchs_info[key]["group1"], matchs_info[key]["player1"],
-               matchs_info[key]["group2"], matchs_info[key]["player2"])
+    create_env(
+        key, matchs_info[key]["group1"], matchs_info[key]["player1"],
+        matchs_info[key]["group2"], matchs_info[key]["player2"])
+
+    run_dir = os.path.abspath(key)
+    players = [
+        f"agent_{matchs_info[key]['player1']}",
+        f"agent_{matchs_info[key]['player2']}",
+    ]
 
     matchs_info[key]["container"] = client.containers.run(
             'abyss-playground:latest',
             user=f"{os.getuid()}:{os.getgid()}",
-            volumes=[
-                os.getcwd()+":"+os.getcwd(),
-                "/etc/passwd:/etc/passwd:ro",
-                "/etc/group:/etc/group:ro"],
-            working_dir=os.getcwd(),
+            # read-only game, writable run dir, read-only runner.
+            volumes={
+                Config.GAME_DIR: {
+                    "bind": "/game", "mode": "ro"},
+                run_dir: {
+                    "bind": "/run", "mode": "rw"},
+                Config.RUNNER_PATH: {
+                    "bind": "/opt/abyss/runner.py", "mode": "ro"},
+                "/etc/passwd": {
+                    "bind": "/etc/passwd", "mode": "ro"},
+                "/etc/group": {
+                    "bind": "/etc/group", "mode": "ro"},
+            },
+            working_dir="/run",
+            command=["python", "/opt/abyss/runner.py"],
             mem_limit="9g",
             network="bridge",
             detach=True,
@@ -112,10 +129,13 @@ def play_match(client: docker.DockerClient, port: int,
             auto_remove=True,
             name=key,
             environment=[
-                f"RUNDIR={key}",
-                f"PLAYER_1=agent_{matchs_info[key]['player1']}",
-                f"PLAYER_2=agent_{matchs_info[key]['player2']}",
+                "RUN_DIR=/run",
+                "GAME_DIR=/game",
+                "MODE=match",
                 f"PORT={port}",
+                f"PLAYERS_JSON={json.dumps(players)}",
+                f"PLAYER_1={players[0]}",
+                f"PLAYER_2={players[1]}",
                 f"CUID={str(os.getuid())}",
                 f"GUID={str(os.getgid())}"])
 
@@ -605,12 +625,7 @@ def launch_arena(base_dir):
     os.chdir(base_dir)
 
     # Create arena playground
-    if not os.path.exists("./playground"):
-        os.mkdir("./playground")
-    if (not os.path.exists("./playground/entrypoint.sh") or
-        not filecmp.cmp("./playground/entrypoint.sh",
-                        "./playground/entrypoint.sh", False)):
-        shutil.copy("./docker/entrypoint.sh", "./playground/")
+    os.mkdir("./playground", exist_ok=True)
     os.chdir("./playground")
 
     redis_conn = new_redis_client(Config.REDIS_URL)

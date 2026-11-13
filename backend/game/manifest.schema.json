@@ -42,7 +42,7 @@
     "launcher": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["entry"],
+      "required": ["entry", "timeout_match", "timeout_verify"],
       "properties": {
         "entry": { "type": "string", "minLength": 1 },
         "timeout_match": { "type": "integer", "minimum": 1 },
