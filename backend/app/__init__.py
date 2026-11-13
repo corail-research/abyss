@@ -2,6 +2,7 @@ import os
 import logging
 import uuid
 import re
+import click
 
 from datetime import timezone, timedelta, datetime
 from rlh import RedisPubSubLogHandler
@@ -138,6 +139,41 @@ def create_app(freeze=False, freeze_dest=None):
         """Apply Alembic migrations (on existing db)."""
         from backend.db_setup import ensure_schema
         ensure_schema(app)
+
+    @app.cli.command("check-game")
+    @click.option("--path", "game_path", default="game",
+                  show_default=True, help="Game bundle directory")
+    def check_game_command(game_path):
+        """Validate a game bundle (manifest + referenced files)."""
+        # Imported lazily: validating a bundle must not require a running app.
+        from backend.game.manifest import ManifestError, load_manifest
+
+        try:
+            manifest = load_manifest(game_path)
+        except ManifestError as exc:
+            # Print every error, not only the first one.
+            for message in exc.errors:
+                click.echo(f"ERROR: {message}", err=True)
+            raise click.exceptions.Exit(1)
+
+        # Short summary for deployment logs.
+        click.echo(f"Game: {manifest.id} {manifest.version}")
+        click.echo(
+            f"Players: {manifest.players} (draws: {manifest.draws})")
+        click.echo(
+            "Launcher: "
+            f"{manifest.launcher_entry.relative_to(manifest.root)}")
+        click.echo(
+            f"GUI: {manifest.gui_entry.relative_to(manifest.root)}")
+        if manifest.requirements is not None:
+            click.echo(
+                "Requirements: "
+                f"{manifest.requirements.relative_to(manifest.root)}")
+        click.echo(f"Stats: {len(manifest.stats)}")
+
+        for warning in manifest.warnings:
+            click.echo(f"WARNING: {warning}", err=True)
+        click.echo("OK")
 
     @app.errorhandler(400)
     def bad_request_error(e):

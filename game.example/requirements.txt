@@ -1,0 +1,3 @@
+# Add game-specific Python dependencies here.
+
+# /!\ Do not pin seahorse: the platform provides it and validates the manifest compatibility range instead!

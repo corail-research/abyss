@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Example game replay</title>
+</head>
+<body>
+  <h1>Replay viewer placeholder</h1>
+  <p>Replace this file with your game's replay GUI.</p>
+
+  <script>
+    // Abyss appends these query parameters to the GUI URL.
+    // We recommend creating a script in a separate file to implement the GUI commands
+    const params = new URLSearchParams(location.search);
+    const fightId = params.get("fightId");       // fight to display
+    const freeze = params.get("freeze");         // "1" in frozen archives
+    const apiBaseUrl = params.get("apiBaseUrl"); // backend origin
+    console.log({ fightId, freeze, apiBaseUrl });
+  </script>
+</body>
+</html>

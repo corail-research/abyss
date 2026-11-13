@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://abyss.local/schemas/game-manifest-v1.json",
+  "title": "Abyss game manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "id",
+    "version",
+    "name",
+    "players",
+    "draws",
+    "launcher",
+    "gui"
+  ],
+  "properties": {
+    "manifest_version": { "const": 1 },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "maxLength": 64
+    },
+    "version": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "name": { "$ref": "#/$defs/localized" },
+    "description": { "$ref": "#/$defs/localized" },
+    "copyright": { "$ref": "#/$defs/localized" },
+    "players": { "type": "integer", "minimum": 2 },
+    "draws": { "type": "boolean" },
+    "seahorse": { "type": "string", "minLength": 1 },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entry": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\.py$"
+        }
+      }
+    },
+    "requirements": { "type": "string", "minLength": 1 },
+    "launcher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry"],
+      "properties": {
+        "entry": { "type": "string", "minLength": 1 },
+        "timeout_match": { "type": "integer", "minimum": 1 },
+        "timeout_verify": { "type": "integer", "minimum": 1 },
+        "args_match": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "args_verify": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "gui": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry"],
+      "properties": {
+        "entry": { "type": "string", "minLength": 1 }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "download": { "$ref": "#/$defs/localized" },
+        "pages": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "fr": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "en": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "stats": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "title", "type", "aggregation"],
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "title": { "$ref": "#/$defs/localized" },
+          "description": { "$ref": "#/$defs/localized" },
+          "type": { "enum": ["integer"] },
+          "aggregation": { "enum": ["sum", "mean", "min", "max"] },
+          "to_maximize": { "type": "boolean" },
+          "in_palmares": { "type": "boolean" },
+          "palmares_image": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "localized": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fr", "en"],
+      "properties": {
+        "fr": { "type": "string", "minLength": 1 },
+        "en": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

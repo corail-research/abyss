@@ -1,0 +1,5 @@
+Example game rules (plain text)
+================================
+
+This file is an example of a text rules download.
+Replace it with the real rules of your game.

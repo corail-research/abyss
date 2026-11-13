@@ -14,7 +14,7 @@ src/api/*
 !src/api/mutator
 
 *student_agents*
-
+/game/
 *playground*
 *verifyground*
 

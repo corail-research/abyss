@@ -1,0 +1,82 @@
+{
+  "manifest_version": 1,
+  "id": "example-game",
+  "version": "1.0.0",
+  "name": {
+    "fr": "Jeu d'exemple",
+    "en": "Example game"
+  },
+  "description": {
+    "fr": "Remplacez cette description.",
+    "en": "Replace this description."
+  },
+  "copyright": {
+    "fr": "Lien vers la source ou la licence",
+    "en": "Link to the source or license"
+  },
+  "players": 2,
+  "draws": true,
+  "seahorse": ">=1.2.6",
+  "agent": {
+    "entry": "my_player.py"
+  },
+  "requirements": "requirements.txt",
+  "launcher": {
+    "entry": "main.py",
+    "timeout_match": 2000,
+    "timeout_verify": 1000,
+    "args_match": [
+      "-p",
+      "{port}",
+      "-f",
+      "{log}",
+      "-t",
+      "local",
+      "{players}"
+    ],
+    "args_verify": [
+      "-p",
+      "{port}",
+      "-f",
+      "{log}",
+      "-t",
+      "verify",
+      "{player}"
+    ]
+  },
+  "gui": {
+    "entry": "index.html"
+  },
+  "rules": {
+    "download": {
+      "fr": "rules/regles.pdf",
+      "en": "rules/rules.txt"
+    },
+    "pages": {
+      "fr": [
+        "rules/page-fr.svg"
+      ],
+      "en": [
+        "rules/page-en.png"
+      ]
+    }
+  },
+  "stats": [
+    {
+      "key": "n_moves",
+      "title": {
+        "fr": "Coups joués",
+        "en": "Moves played"
+      },
+      "description": {
+        "fr": "Nombre de coups joués.",
+        "en": "Number of moves played."
+      },
+      "type": "integer",
+      "aggregation": "sum",
+      "to_maximize": true,
+      "in_palmares": true,
+      "palmares_image": "stats/moves.svg"
+    }
+  ]
+}
